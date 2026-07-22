@@ -24,26 +24,33 @@ export interface IndexInfo {
   is_unique: boolean;
 }
 
+// supabase.rpc не бачить Database.Functions через moduleResolution: bundler
+// Використовуємо прямий виклик з保住 this-binding
+function rpcCall<T>(fn: string, params?: Record<string, unknown>): Promise<{ data: T | null; error: unknown }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase.rpc as any)(fn, params) as Promise<{ data: T | null; error: unknown }>;
+}
+
 export async function fetchAllTables(): Promise<string[]> {
-  const { data, error } = await supabase.rpc('get_all_tables');
+  const { data, error } = await rpcCall<Array<{ table_name: string }>>('get_all_tables');
   if (error) throw error;
   return (data ?? []).map((r) => r.table_name);
 }
 
 export async function fetchTableColumns(tableName: string): Promise<ColumnInfo[]> {
-  const { data, error } = await supabase.rpc('get_table_columns', { target_table: tableName });
+  const { data, error } = await rpcCall<ColumnInfo[]>('get_table_columns', { target_table: tableName });
   if (error) throw error;
   return (data ?? []) as ColumnInfo[];
 }
 
 export async function fetchTableConstraints(tableName: string): Promise<ConstraintInfo[]> {
-  const { data, error } = await supabase.rpc('get_table_constraints', { target_table: tableName });
+  const { data, error } = await rpcCall<ConstraintInfo[]>('get_table_constraints', { target_table: tableName });
   if (error) throw error;
   return (data ?? []) as ConstraintInfo[];
 }
 
 export async function fetchTableIndexes(tableName: string): Promise<IndexInfo[]> {
-  const { data, error } = await supabase.rpc('get_table_indexes', { target_table: tableName });
+  const { data, error } = await rpcCall<IndexInfo[]>('get_table_indexes', { target_table: tableName });
   if (error) throw error;
   return (data ?? []) as IndexInfo[];
 }
