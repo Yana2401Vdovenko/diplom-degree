@@ -70,16 +70,18 @@ export function AppLayout() {
 
   const globalSearchOptions = useMemo(
     () =>
-      navItems.map((item) => {
-        const label = t(item.labelKey);
-        const keywords = [label, item.path, ...(getGlobalSearchKeywords()[item.path] ?? [])];
+      navItems
+        .filter((item): item is (typeof navItems)[number] & { path: string } => 'path' in item)
+        .map((item) => {
+          const label = t(item.labelKey);
+          const keywords = [label, item.path, ...(getGlobalSearchKeywords()[item.path] ?? [])];
 
-        return {
-          label,
-          path: item.path,
-          searchText: keywords.join(' ').toLowerCase(),
-        };
-      }),
+          return {
+            label,
+            path: item.path,
+            searchText: keywords.join(' ').toLowerCase(),
+          };
+        }),
     [t],
   );
 

@@ -82,6 +82,7 @@ export function Sidebar({ width, onNavigate }: SidebarProps) {
             );
           }
 
+          if (!('path' in item)) return null;
           const Icon = item.icon;
 
           return (
