@@ -16,6 +16,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getDirectoryConfigByTable } from '../config/directories';
 import { ActionButton } from '../components/ActionButton';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -31,6 +32,7 @@ import type { ArchiveRow } from '../types/database';
 
 export function ArchivePage() {
   const { archiveCleanupMode, archiveRetentionDays } = useAppSettings();
+  const { t } = useTranslation();
   const {
     records,
     loading,
@@ -96,27 +98,27 @@ export function ArchivePage() {
 
   const cleanupDialog = {
     selected: {
-      title: 'Видалити обрані записи?',
-      description: `Буде остаточно видалено записів: ${selectedIds.length}. Цю дію неможливо скасувати.`,
-      confirmLabel: 'Видалити обрані',
+      title: t('archive.deleteSelectedTitle'),
+      description: t('archive.deleteSelectedDescription', { count: selectedIds.length }),
+      confirmLabel: t('archive.deleteSelectedConfirm'),
     },
     expired: {
-      title: 'Очистити старі записи?',
-      description: `Буде видалено записи архіву старші за ${archiveRetentionDays} дн. Цю дію неможливо скасувати.`,
-      confirmLabel: 'Очистити старі',
+      title: t('archive.clearExpiredTitle'),
+      description: t('archive.clearExpiredDescription', { days: archiveRetentionDays }),
+      confirmLabel: t('archive.clearExpiredConfirm'),
     },
     all: {
-      title: 'Очистити весь архів?',
-      description: 'Усі записи архіву будуть остаточно видалені. Цю дію неможливо скасувати.',
-      confirmLabel: 'Очистити весь архів',
+      title: t('archive.clearAllTitle'),
+      description: t('archive.clearAllDescription'),
+      confirmLabel: t('archive.clearAllConfirm'),
     },
   }[cleanupAction ?? 'all'];
 
   return (
     <>
       <PageHeader
-        title="Архів"
-        subtitle="Архівні записи довідників Supabase. Записи можна відновити або видалити назавжди."
+        title={t('archive.title')}
+        subtitle={t('archive.subtitle')}
       />
 
       <Stack spacing={2.5}>
@@ -129,21 +131,19 @@ export function ArchivePage() {
                 alignItems={{ xs: 'stretch', md: 'center' }}
               >
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h3">Очищення архіву</Typography>
+                  <Typography variant="h3">{t('archive.cleanup')}</Typography>
                   <Typography color="text.secondary">
-                    Режим: {archiveCleanupMode === 'auto' ? 'автоматично' : 'вручну'}.
-                    Автоочищення видаляє записи старші за {archiveRetentionDays} дн.
+                    {t('archive.mode')}: {archiveCleanupMode === 'auto' ? t('archive.autoEnabled') : t('archive.manualMode')}.
                   </Typography>
                 </Box>
                 <Chip
                   color={archiveCleanupMode === 'auto' ? 'success' : 'default'}
-                  label={archiveCleanupMode === 'auto' ? 'Автоочищення увімкнено' : 'Ручний режим'}
+                  label={archiveCleanupMode === 'auto' ? t('archive.autoEnabled') : t('archive.manualMode')}
                 />
               </Stack>
 
               <Alert severity="warning">
-                Остаточне очищення архіву не відновлюється. Для одного запису використовуйте дію
-                в рядку, для кількох — позначте їх галочками.
+                {t('archive.warning')}
               </Alert>
 
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
@@ -154,7 +154,7 @@ export function ArchivePage() {
                   disabled={selectedIds.length === 0 || saving}
                   onClick={() => setCleanupAction('selected')}
                 >
-                  Видалити обрані ({selectedIds.length})
+                  {t('archive.deleteSelected', { count: selectedIds.length })}
                 </Button>
                 <Button
                   variant="outlined"
@@ -163,7 +163,7 @@ export function ArchivePage() {
                   disabled={records.length === 0 || saving}
                   onClick={() => setCleanupAction('expired')}
                 >
-                  Очистити старші за {archiveRetentionDays} дн.
+                  {t('archive.clearOlder', { days: archiveRetentionDays })}
                 </Button>
                 <Button
                   variant="contained"
@@ -172,7 +172,7 @@ export function ArchivePage() {
                   disabled={records.length === 0 || saving}
                   onClick={() => setCleanupAction('all')}
                 >
-                  Очистити весь архів
+                  {t('archive.clearAll')}
                 </Button>
               </Stack>
             </Stack>
@@ -184,13 +184,13 @@ export function ArchivePage() {
             <SearchField
               value={query}
               onChange={setQuery}
-              placeholder="Пошук в архіві"
-              historySource="Архів"
+              placeholder={t('archive.search')}
+              historySource={t('archive.title')}
             />
           </Stack>
           <TextField
             select
-            label="Таблиця"
+            label={t('archive.table')}
             value={tableFilter}
             onChange={(event) => setTableFilter(event.target.value)}
             sx={{ minWidth: { xs: '100%', md: 260 } }}
@@ -211,21 +211,21 @@ export function ArchivePage() {
             columns={[
               {
                 key: 'selected',
-                label: allVisibleSelected ? 'Зняти' : 'Обрати',
+                label: allVisibleSelected ? t('archive.selectNone') : t('archive.selectAll'),
                 minWidth: 90,
                 align: 'center',
                 render: (row) => (
                   <Checkbox
                     checked={selectedIds.includes(row.id)}
                     onChange={() => toggleSelected(row.id)}
-                    inputProps={{ 'aria-label': `Обрати ${row.name}` }}
+                    inputProps={{ 'aria-label': allVisibleSelected ? t('archive.deselectVisible') : t('archive.selectVisible') }}
                   />
                 ),
               },
-              { key: 'entity', label: 'Тип запису', minWidth: 180, sortable: true },
-              { key: 'name', label: 'Назва', minWidth: 260, sortable: true },
-              { key: 'key', label: 'Ключ', minWidth: 120, sortable: true },
-              { key: 'archivedAt', label: 'Дата архівації', minWidth: 180, sortable: true },
+              { key: 'entity', label: t('archive.entityType'), minWidth: 180, sortable: true },
+              { key: 'name', label: t('archive.name'), minWidth: 260, sortable: true },
+              { key: 'key', label: t('archive.key'), minWidth: 120, sortable: true },
+              { key: 'archivedAt', label: t('archive.archivedAt'), minWidth: 180, sortable: true },
             ]}
             rows={sortedItems}
             rowKey={(row) => row.id}
@@ -239,14 +239,14 @@ export function ArchivePage() {
                   color="success"
                   onClick={() => setRestoreCandidate(row.raw)}
                 >
-                  Відновити
+                  {t('archive.restore')}
                 </ActionButton>
                 <ActionButton
                   icon={<DeleteForeverIcon fontSize="small" />}
                   color="error"
                   onClick={() => setDeleteCandidate(row.raw)}
                 >
-                  Видалити назавжди
+                  {t('archive.deleteForever')}
                 </ActionButton>
               </>
             )}
@@ -255,16 +255,16 @@ export function ArchivePage() {
 
         {!loading && visibleIds.length > 0 && (
           <Button variant="text" onClick={toggleAllVisible} sx={{ alignSelf: 'flex-start' }}>
-            {allVisibleSelected ? 'Зняти вибір з видимих' : 'Обрати всі видимі записи'}
+            {allVisibleSelected ? t('archive.selectNone') : t('archive.selectAll')}
           </Button>
         )}
       </Stack>
 
       <ConfirmDialog
         open={Boolean(restoreCandidate)}
-        title="Відновити запис?"
-        description="Запис повернеться до відповідного довідника та зникне з архіву."
-        confirmLabel="Відновити"
+        title={t('archive.restoreTitle')}
+        description={t('archive.restoreDescription')}
+        confirmLabel={t('archive.restore')}
         confirmColor="success"
         loading={saving}
         onClose={() => setRestoreCandidate(null)}
@@ -283,9 +283,9 @@ export function ArchivePage() {
 
       <ConfirmDialog
         open={Boolean(deleteCandidate)}
-        title="Видалити назавжди?"
-        description="Цю дію неможливо скасувати. Запис буде остаточно видалений лише з архіву."
-        confirmLabel="Видалити назавжди"
+        title={t('archive.deleteForeverTitle')}
+        description={t('archive.deleteForeverDescription')}
+        confirmLabel={t('archive.deleteForever')}
         confirmColor="error"
         loading={saving}
         onClose={() => setDeleteCandidate(null)}

@@ -1,8 +1,11 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Box, Button, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export function NotFoundPage() {
+  const { t } = useTranslation();
+
   return (
     <Box
       sx={{
@@ -16,13 +19,13 @@ export function NotFoundPage() {
     >
       <Box>
         <Typography variant="h1" sx={{ mb: 1 }}>
-          Сторінку не знайдено
+          {t('notFound.title')}
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Обраний маршрут відсутній у макеті адміністративної панелі.
+          {t('notFound.subtitle')}
         </Typography>
         <Button component={RouterLink} to="/dashboard" variant="contained" startIcon={<ArrowBackIcon />}>
-          До головної панелі
+          {t('notFound.backToHome')}
         </Button>
       </Box>
     </Box>

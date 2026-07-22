@@ -13,8 +13,8 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { NavLink } from 'react-router-dom';
 import { navItems } from '../constants/navItems';
-import { useAppSettings } from '../context/AppSettingsContext';
 import { isSupabaseConfigured } from '../lib/supabase/client';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   width: number;
@@ -23,7 +23,7 @@ interface SidebarProps {
 
 export function Sidebar({ width, onNavigate }: SidebarProps) {
   const theme = useTheme();
-  const { t } = useAppSettings();
+  const { t } = useTranslation();
 
   return (
     <Box
@@ -53,13 +53,35 @@ export function Sidebar({ width, onNavigate }: SidebarProps) {
         </Box>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={800} noWrap>
-            Панель адміністратора
+            {t('sidebar.appName')}
           </Typography>
         </Box>
       </Stack>
 
       <List sx={{ px: 1.5, py: 1, overflowY: 'auto', flex: 1 }}>
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
+          if ('type' in item && item.type === 'header') {
+            return (
+              <Typography
+                key={`header-${item.labelKey}`}
+                variant="caption"
+                fontWeight={700}
+                sx={{
+                  display: 'block',
+                  px: 1.5,
+                  pt: index === 0 ? 0 : 2,
+                  pb: 0.5,
+                  color: 'text.secondary',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  fontSize: 11,
+                }}
+              >
+                {t(item.labelKey)}
+              </Typography>
+            );
+          }
+
           const Icon = item.icon;
 
           return (
@@ -104,7 +126,7 @@ export function Sidebar({ width, onNavigate }: SidebarProps) {
 
       <Box sx={{ p: 2 }}>
         <Chip
-          label={isSupabaseConfigured ? 'Supabase' : 'Потрібен .env.local'}
+          label={isSupabaseConfigured ? 'Supabase' : t('sidebar.envWarning')}
           color={isSupabaseConfigured ? 'success' : 'warning'}
           variant="outlined"
           size="small"

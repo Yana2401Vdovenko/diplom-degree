@@ -1,140 +1,122 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-interface ManageRolesRequest {
-  action: 'ping' | 'listUsers' | 'assignRole';
-  email?: string;
-  role?: string;
-}
-
-function getAdminClient() {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase environment variables.');
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
-
-async function assertAdmin(callerJwt: string) {
-  const adminClient = getAdminClient();
-  const token = callerJwt.replace('Bearer ', '');
-  const { data, error } = await adminClient.auth.getUser(token);
-
-  if (error || !data.user) {
-    throw new Error('Unauthorized');
-  }
-
-  const role = String(data.user.app_metadata?.role ?? data.user.user_metadata?.role ?? '');
-
-  if (role !== 'admin') {
-    throw new Error('Forbidden');
-  }
-
-  return data.user;
-}
-
-Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const authHeader = request.headers.get('Authorization');
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!authHeader) {
-      throw new Error('Missing Authorization header');
-    }
+    const adminClient = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    await assertAdmin(authHeader);
+    const authHeader = req.headers.get("Authorization")!;
+    const accessToken = authHeader.replace("Bearer ", "");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const userClient = createClient(supabaseUrl, anonKey);
 
-    const body = (await request.json()) as ManageRolesRequest;
-    const adminClient = getAdminClient();
-
-    if (body.action === 'ping') {
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          checkedAt: new Date().toISOString(),
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    if (body.action === 'listUsers') {
-      const { data, error } = await adminClient.auth.admin.listUsers();
-
-      if (error) {
-        throw error;
-      }
-
-      const users = (data.users ?? []).map((user) => ({
-        id: user.id,
-        email: user.email ?? '',
-        role: String(user.app_metadata?.role ?? user.user_metadata?.role ?? ''),
-      }));
-
-      return new Response(JSON.stringify({ users }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const {
+      data: { user },
+      error: authError,
+    } = await userClient.auth.getUser(accessToken);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized", details: authError?.message ?? "no user" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (body.action === 'assignRole') {
-      if (!body.email || !body.role) {
-        throw new Error('Email and role are required.');
-      }
-
-      const { data, error: listError } = await adminClient.auth.admin.listUsers();
-
-      if (listError) {
-        throw listError;
-      }
-
-      const targetUser = (data.users ?? []).find(
-        (user) => user.email?.toLowerCase() === body.email?.toLowerCase(),
-      );
-
-      if (!targetUser) {
-        throw new Error('User not found.');
-      }
-
-      const { error } = await adminClient.auth.admin.updateUserById(targetUser.id, {
-        app_metadata: {
-          ...targetUser.app_metadata,
-          role: body.role,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (user.app_metadata?.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Admin only" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    throw new Error('Unsupported action.');
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unexpected error';
+    const { action, ...params } = await req.json();
 
-    return new Response(JSON.stringify({ error: message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    switch (action) {
+      case "ping": {
+        return new Response(
+          JSON.stringify({ ok: true, checkedAt: new Date().toISOString() }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      case "listUsers": {
+        const { data, error } = await adminClient.auth.admin.listUsers();
+        if (error) throw error;
+
+        const users = data.users.map((u) => ({
+          id: u.id,
+          email: u.email ?? "",
+          role: String(u.app_metadata?.role ?? ""),
+        }));
+
+        return new Response(JSON.stringify({ users }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "assignRole": {
+        const { email, role } = params;
+        if (!email || !role) {
+          return new Response(
+            JSON.stringify({ error: "Missing email or role" }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        const { data: listData, error: listError } =
+          await adminClient.auth.admin.listUsers();
+        if (listError) throw listError;
+
+        const target = listData.users.find((u) => u.email === email);
+        if (!target) {
+          return new Response(JSON.stringify({ error: "User not found" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: updateError } =
+          await adminClient.auth.admin.updateUserById(target.id, {
+            app_metadata: { role },
+          });
+        if (updateError) throw updateError;
+
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      default:
+        return new Response(
+          JSON.stringify({ error: `Unknown action: ${action}` }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+    }
+  } catch (err) {
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

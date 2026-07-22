@@ -40,6 +40,26 @@ export interface EducationLevelRow {
   Назва_рівня_навчання: string | null;
 }
 
+export interface FacultyRow {
+  Код_факультету_нні: string;
+  Назва_факультету_нні: string | null;
+  Декан_факультету_нні: string | null;
+  Телефон_факультету_нні: string | null;
+  Адреса_факультету_нні: string | null;
+  Email_факультету_нні: string | null;
+  Корпус_деканату_факультету_нні: string | null;
+}
+
+export interface DepartmentRow {
+  Код_кафедри: string;
+  Код_факультету_нні: string | null;
+  Назва_кафедри: string | null;
+  Телефон_кафедри: string | null;
+  Email_кафедри: string | null;
+  Адреса_кафедри: string | null;
+  Корпус_кафедри: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -88,6 +108,18 @@ export interface Database {
         Update: Partial<EducationLevelRow>;
         Relationships: [];
       };
+      Факультет_ННІ: {
+        Row: FacultyRow;
+        Insert: FacultyRow;
+        Update: Partial<FacultyRow>;
+        Relationships: [];
+      };
+      Кафедра: {
+        Row: DepartmentRow;
+        Insert: DepartmentRow;
+        Update: Partial<DepartmentRow>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -102,7 +134,9 @@ export type DirectoryTableName =
   | 'Статус_викладача'
   | 'Навантаження'
   | 'Форма_навчання'
-  | 'Рівень_навчання';
+  | 'Рівень_навчання'
+  | 'Кафедра'
+  | 'Факультет_ННІ';
 
 export type DirectoryRow =
   | TeacherTypeRow
@@ -110,4 +144,6 @@ export type DirectoryRow =
   | TeacherStatusRow
   | WorkloadRow
   | StudyFormRow
-  | EducationLevelRow;
+  | EducationLevelRow
+  | FacultyRow
+  | DepartmentRow;

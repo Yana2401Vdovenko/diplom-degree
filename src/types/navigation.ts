@@ -1,8 +1,14 @@
 import type { SvgIconComponent } from '@mui/icons-material';
-import type { TranslationKey } from '../i18n/translations';
 
 export interface NavItem {
-  labelKey: TranslationKey;
+  labelKey: string;
   path: string;
   icon: SvgIconComponent;
 }
+
+export interface NavSection {
+  type: 'header';
+  labelKey: string;
+}
+
+export type NavEntry = NavItem | NavSection;

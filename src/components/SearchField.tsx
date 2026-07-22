@@ -1,5 +1,6 @@
 import SearchIcon from '@mui/icons-material/Search';
 import { InputAdornment, TextField } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import { recordSearchQuery } from '../utils/searchHistory';
 
 interface SearchFieldProps {
@@ -12,9 +13,11 @@ interface SearchFieldProps {
 export function SearchField({
   value,
   onChange,
-  placeholder = 'Пошук',
-  historySource = 'Пошук',
+  placeholder,
+  historySource = 'search',
 }: SearchFieldProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('common.search');
   const saveSearch = () => recordSearchQuery(value, historySource);
 
   return (
@@ -22,7 +25,7 @@ export function SearchField({
       fullWidth
       size="small"
       value={value}
-      placeholder={placeholder}
+      placeholder={resolvedPlaceholder}
       onChange={(event) => onChange(event.target.value)}
       onBlur={saveSearch}
       onKeyDown={(event) => {

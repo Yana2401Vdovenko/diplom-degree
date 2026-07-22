@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { FormEvent, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { isSupabaseConfigured } from '../lib/supabase/client';
@@ -52,6 +53,7 @@ function forgetEmail() {
 export function LoginPage() {
   const { session, loading, signIn } = useAuth();
   const { showError } = useNotification();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState(getStoredEmail);
@@ -71,7 +73,7 @@ export function LoginPage() {
     event.preventDefault();
 
     if (!isSupabaseConfigured) {
-      showError('Supabase не налаштовано. Додайте ключі у файл .env.local.');
+      showError(t('login.notConfigured'));
       return;
     }
 
@@ -88,7 +90,7 @@ export function LoginPage() {
 
       navigate(redirectPath, { replace: true });
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося увійти.'));
+      showError(getSupabaseErrorMessage(error, t('login.loginError')));
     } finally {
       setSubmitting(false);
     }
@@ -107,15 +109,15 @@ export function LoginPage() {
       <Card sx={{ width: '100%', maxWidth: 430 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h1" sx={{ mb: 1 }}>
-            Вхід
+            {t('login.title')}
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Авторизація через Supabase. Доступ лише для користувачів з роллю admin.
+            {t('login.subtitle')}
           </Typography>
 
           {!isSupabaseConfigured && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Створіть `.env.local` з `VITE_SUPABASE_URL` та `VITE_SUPABASE_ANON_KEY`.
+              {t('login.envWarning')}
             </Alert>
           )}
 
@@ -127,7 +129,7 @@ export function LoginPage() {
             <Box component="form" onSubmit={(event) => void handleSubmit(event)}>
               <Stack spacing={2.5}>
                 <TextField
-                  label="Email"
+                  label={t('login.email')}
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
@@ -136,7 +138,7 @@ export function LoginPage() {
                   required
                 />
                 <TextField
-                  label="Пароль"
+                  label={t('login.password')}
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -145,7 +147,7 @@ export function LoginPage() {
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
-                          aria-label={showPassword ? 'Сховати пароль' : 'Показати пароль'}
+                          aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                           onClick={() => setShowPassword((current) => !current)}
                           edge="end"
                         >
@@ -164,7 +166,7 @@ export function LoginPage() {
                       onChange={(event) => setRememberLogin(event.target.checked)}
                     />
                   }
-                  label="Запам'ятати email"
+                  label={t('login.rememberEmail')}
                 />
                 <Button
                   type="submit"
@@ -173,7 +175,7 @@ export function LoginPage() {
                   startIcon={<LoginIcon />}
                   disabled={submitting}
                 >
-                  {submitting ? 'Вхід...' : 'Увійти'}
+                  {submitting ? t('login.loggingIn') : t('login.loginButton')}
                 </Button>
               </Stack>
             </Box>

@@ -1,5 +1,6 @@
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import type { PaletteMode } from '@mui/material';
+import i18n from 'i18next';
 import {
   createContext,
   useCallback,
@@ -9,11 +10,6 @@ import {
   type ReactNode,
 } from 'react';
 import { createAppTheme } from '../theme';
-import {
-  translations,
-  type AppLanguage,
-  type TranslationKey,
-} from '../i18n/translations';
 
 type ArchiveCleanupMode = 'manual' | 'auto';
 
@@ -24,15 +20,11 @@ interface AppSettingsContextValue {
   setArchiveCleanupMode: (mode: ArchiveCleanupMode) => void;
   archiveRetentionDays: number;
   setArchiveRetentionDays: (days: number) => void;
-  language: AppLanguage;
-  setLanguage: (language: AppLanguage) => void;
-  t: (key: TranslationKey) => string;
 }
 
 const THEME_MODE_KEY = 'academic-workload-admin:theme-mode';
 const ARCHIVE_CLEANUP_MODE_KEY = 'academic-workload-admin:archive-cleanup-mode';
 const ARCHIVE_RETENTION_DAYS_KEY = 'academic-workload-admin:archive-retention-days';
-const LANGUAGE_KEY = 'academic-workload-admin:language';
 const DEFAULT_ARCHIVE_RETENTION_DAYS = 30;
 
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
@@ -72,16 +64,6 @@ function getInitialRetentionDays() {
   return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_ARCHIVE_RETENTION_DAYS;
 }
 
-function getInitialLanguage(): AppLanguage {
-  const stored = readStorageValue(LANGUAGE_KEY);
-
-  if (stored === 'uk' || stored === 'en' || stored === 'pl') {
-    return stored;
-  }
-
-  return 'uk';
-}
-
 interface AppSettingsProviderProps {
   children: ReactNode;
 }
@@ -91,7 +73,6 @@ export function AppSettingsProvider({ children }: AppSettingsProviderProps) {
   const [archiveCleanupMode, setArchiveCleanupModeState] =
     useState<ArchiveCleanupMode>(getInitialCleanupMode);
   const [archiveRetentionDays, setArchiveRetentionDaysState] = useState(getInitialRetentionDays);
-  const [language, setLanguageState] = useState<AppLanguage>(getInitialLanguage);
 
   const theme = useMemo(() => createAppTheme(themeMode), [themeMode]);
 
@@ -111,37 +92,21 @@ export function AppSettingsProvider({ children }: AppSettingsProviderProps) {
     writeStorageValue(ARCHIVE_RETENTION_DAYS_KEY, String(normalizedDays));
   }, []);
 
-  const setLanguage = useCallback((nextLanguage: AppLanguage) => {
-    setLanguageState(nextLanguage);
-    writeStorageValue(LANGUAGE_KEY, nextLanguage);
-  }, []);
-
-  const t = useCallback(
-    (key: TranslationKey) => translations[language][key] ?? translations.uk[key] ?? key,
-    [language],
-  );
-
   const value = useMemo<AppSettingsContextValue>(
     () => ({
-      themeMode,
-      setThemeMode,
       archiveCleanupMode,
-      setArchiveCleanupMode,
       archiveRetentionDays,
+      setArchiveCleanupMode,
       setArchiveRetentionDays,
-      language,
-      setLanguage,
-      t,
+      setThemeMode,
+      themeMode,
     }),
     [
       archiveCleanupMode,
       archiveRetentionDays,
-      language,
       setArchiveCleanupMode,
       setArchiveRetentionDays,
-      setLanguage,
       setThemeMode,
-      t,
       themeMode,
     ],
   );

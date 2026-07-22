@@ -1,3 +1,4 @@
+import { ARCHIVE_TABLE } from '../constants/tableNames';
 import { getDirectoryConfig, type SupabaseDirectoryKey } from '../config/directories';
 import { supabase } from '../lib/supabase/client';
 import type { DirectoryTableName } from '../types/database';
@@ -66,6 +67,24 @@ export async function updateDirectoryRecord(
   return data as DirectoryRecordMap;
 }
 
+export async function massUpdateDirectoryRecords(
+  key: SupabaseDirectoryKey,
+  primaryValues: string[],
+  field: string,
+  value: unknown,
+) {
+  const config = getDirectoryConfig(key);
+
+  const { error } = await supabase
+    .from(config.tableName)
+    .update({ [field]: value } as never)
+    .in(config.primaryKey, primaryValues);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function fetchTeacherStatusesForSelect(): Promise<
   Array<{ Код_статусу_викладача: string; Назва_статусу_викладача: string | null }>
 > {
@@ -95,7 +114,7 @@ export async function archiveDirectoryRecord(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { error: archiveError } = await supabase.from('Архів').insert({
+  const { error: archiveError } = await supabase.from(ARCHIVE_TABLE).insert({
     Таблиця: config.tableName,
     Ключ_запису: primaryValue,
     Дані: record as never,

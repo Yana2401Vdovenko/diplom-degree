@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../../types/database';
 
@@ -9,7 +10,7 @@ export const supabaseProjectUrl = supabaseUrl ?? '';
 
 if (!isSupabaseConfigured) {
   console.warn(
-    'Supabase не налаштовано. Додайте VITE_SUPABASE_URL та VITE_SUPABASE_ANON_KEY у .env.local',
+    i18n.t('error.supabaseNotConfigured'),
   );
 }
 

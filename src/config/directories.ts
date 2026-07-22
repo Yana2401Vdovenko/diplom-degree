@@ -6,15 +6,26 @@ export type SupabaseDirectoryKey =
   | 'teacherStatuses'
   | 'workload'
   | 'studyForms'
-  | 'educationLevels';
+  | 'educationLevels'
+  | 'faculties'
+  | 'departments';
 
 export interface DirectoryFieldConfig {
   key: string;
   label: string;
   required?: boolean;
   maxLength?: number;
-  type?: 'text' | 'number';
+  type?: 'text' | 'number' | 'select';
   readOnlyOnEdit?: boolean;
+  minWidth?: number;
+  align?: 'left' | 'right' | 'center';
+  sortable?: boolean;
+  filterable?: boolean;
+  format?: 'text' | 'date' | 'status';
+  foreignTable?: string;
+  foreignKey?: string;
+  foreignLabel?: string;
+  foreignExtraFields?: string[];
 }
 
 export interface DirectoryConfig {
@@ -136,6 +147,44 @@ export const directoryConfigs: Record<SupabaseDirectoryKey, DirectoryConfig> = {
         readOnlyOnEdit: true,
       },
       { key: 'Назва_рівня_навчання', label: 'Назва рівня', required: true, maxLength: 500 },
+    ],
+  },
+  faculties: {
+    key: 'faculties',
+    tableName: 'Факультет_ННІ',
+    entityLabel: 'Факультет/ННІ',
+    title: 'Факультети та ННІ',
+    subtitle: 'Факультети, інститути та навчально-наукові інститути університету.',
+    route: '/faculties',
+    primaryKey: 'Код_факультету_нні',
+    displayNameField: 'Назва_факультету_нні',
+    fields: [
+      { key: 'Код_факультету_нні', label: 'Код', required: true, maxLength: 3, readOnlyOnEdit: true },
+      { key: 'Назва_факультету_нні', label: 'Назва', required: true, maxLength: 500 },
+      { key: 'Декан_факультету_нні', label: 'Декан', maxLength: 50 },
+      { key: 'Телефон_факультету_нні', label: 'Телефон', maxLength: 13 },
+      { key: 'Адреса_факультету_нні', label: 'Адреса', maxLength: 500 },
+      { key: 'Email_факультету_нні', label: 'Email', maxLength: 500 },
+      { key: 'Корпус_деканату_факультету_нні', label: 'Корпус деканату', maxLength: 50 },
+    ],
+  },
+  departments: {
+    key: 'departments',
+    tableName: 'Кафедра',
+    entityLabel: 'Кафедра',
+    title: 'Кафедри',
+    subtitle: 'Кафедри факультетів та ННІ для обліку викладачів і навантаження.',
+    route: '/departments',
+    primaryKey: 'Код_кафедри',
+    displayNameField: 'Назва_кафедри',
+    fields: [
+      { key: 'Код_кафедри', label: 'Код', required: true, maxLength: 6, readOnlyOnEdit: true },
+      { key: 'Код_факультету_нні', label: 'Факультет', required: true, type: 'select', foreignTable: 'Факультет_ННІ', foreignKey: 'Код_факультету_нні', foreignLabel: 'Код_факультету_нні', foreignExtraFields: ['Назва_факультету_нні'] },
+      { key: 'Назва_кафедри', label: 'Назва', required: true, maxLength: 500 },
+      { key: 'Телефон_кафедри', label: 'Телефон', maxLength: 13 },
+      { key: 'Email_кафедри', label: 'Email', maxLength: 500 },
+      { key: 'Адреса_кафедри', label: 'Адреса', maxLength: 500 },
+      { key: 'Корпус_кафедри', label: 'Корпус', maxLength: 500 },
     ],
   },
 };

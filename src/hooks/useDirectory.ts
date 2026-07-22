@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getDirectoryConfig, type SupabaseDirectoryKey } from '../config/directories';
 import {
   archiveDirectoryRecord,
   createDirectoryRecord,
   fetchDirectoryRecords,
+  massUpdateDirectoryRecords,
   updateDirectoryRecord,
 } from '../services/directory.service';
 import {
@@ -17,6 +19,7 @@ import { useNotification } from '../context/NotificationContext';
 export function useDirectory(key: SupabaseDirectoryKey) {
   const config = getDirectoryConfig(key);
   const { showSuccess, showError } = useNotification();
+  const { t } = useTranslation();
   const [items, setItems] = useState<DirectoryRecordMap[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,11 +32,11 @@ export function useDirectory(key: SupabaseDirectoryKey) {
       const data = await fetchDirectoryRecords(key);
       setItems(data);
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося завантажити довідник.'));
+      showError(getSupabaseErrorMessage(error, t('error.loadDirectory')));
     } finally {
       setLoading(false);
     }
-  }, [key, showError]);
+  }, [key, showError, t]);
 
   useEffect(() => {
     void loadItems();
@@ -41,10 +44,10 @@ export function useDirectory(key: SupabaseDirectoryKey) {
 
   const filterOptions = useMemo(
     () => [
-      { value: 'all', label: 'Усі поля' },
+      { value: 'all', label: t('directory.allFields') },
       ...config.fields.map((field) => ({ value: field.key, label: field.label })),
     ],
-    [config.fields],
+    [config.fields, t],
   );
 
   const createRecord = useCallback(
@@ -60,17 +63,17 @@ export function useDirectory(key: SupabaseDirectoryKey) {
 
       try {
         await createDirectoryRecord(key, values);
-        showSuccess('Запис успішно додано.');
+        showSuccess(t('message.recordAdded'));
         await loadItems();
         return true;
       } catch (error) {
-        showError(getSupabaseErrorMessage(error, 'Не вдалося додати запис.'));
+        showError(getSupabaseErrorMessage(error, t('error.addRecord')));
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [config, key, loadItems, showError, showSuccess],
+    [config, key, loadItems, showError, showSuccess, t],
   );
 
   const updateRecord = useCallback(
@@ -86,17 +89,17 @@ export function useDirectory(key: SupabaseDirectoryKey) {
 
       try {
         await updateDirectoryRecord(key, primaryValue, values);
-        showSuccess('Запис успішно оновлено.');
+        showSuccess(t('message.recordUpdated'));
         await loadItems();
         return true;
       } catch (error) {
-        showError(getSupabaseErrorMessage(error, 'Не вдалося оновити запис.'));
+        showError(getSupabaseErrorMessage(error, t('error.updateRecord')));
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [config, key, loadItems, showError, showSuccess],
+    [config, key, loadItems, showError, showSuccess, t],
   );
 
   const archiveRecord = useCallback(
@@ -105,17 +108,36 @@ export function useDirectory(key: SupabaseDirectoryKey) {
 
       try {
         await archiveDirectoryRecord(key, record);
-        showSuccess('Запис переміщено до архіву.');
+        showSuccess(t('message.recordArchived'));
         await loadItems();
         return true;
       } catch (error) {
-        showError(getSupabaseErrorMessage(error, 'Не вдалося архівувати запис.'));
+        showError(getSupabaseErrorMessage(error, t('error.archiveRecord')));
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [key, loadItems, showError, showSuccess],
+    [key, loadItems, showError, showSuccess, t],
+  );
+
+  const massUpdate = useCallback(
+    async (primaryValues: string[], field: string, value: unknown) => {
+      setSaving(true);
+
+      try {
+        await massUpdateDirectoryRecords(key, primaryValues, field, value);
+        showSuccess(t('message.massUpdated', { count: primaryValues.length }));
+        await loadItems();
+        return true;
+      } catch (error) {
+        showError(getSupabaseErrorMessage(error, t('error.massUpdate')));
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [key, loadItems, showError, showSuccess, t],
   );
 
   const getPrimaryValue = useCallback(
@@ -135,6 +157,7 @@ export function useDirectory(key: SupabaseDirectoryKey) {
     createRecord,
     updateRecord,
     archiveRecord,
+    massUpdate,
     getPrimaryValue,
   };
 }

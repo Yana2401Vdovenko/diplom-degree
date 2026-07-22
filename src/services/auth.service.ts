@@ -1,4 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js';
+import i18n from 'i18next';
 import { supabase } from '../lib/supabase/client';
 
 export interface AuthUserProfile {
@@ -22,7 +23,7 @@ export function extractUserProfile(user: User | null): AuthUserProfile | null {
     id: user.id,
     email: user.email ?? '',
     role,
-    fullName: String(user.user_metadata?.full_name ?? user.user_metadata?.login ?? user.email ?? 'Користувач'),
+    fullName: String(user.user_metadata?.full_name ?? user.user_metadata?.login ?? user.email ?? i18n.t('login.fallbackName')),
     login: String(user.user_metadata?.login ?? user.email?.split('@')[0] ?? ''),
   };
 }
@@ -44,7 +45,7 @@ export async function signIn(email: string, password: string) {
 
   if (!isAdminUser(data.user)) {
     await supabase.auth.signOut();
-    throw new Error('Доступ дозволено лише користувачам з роллю admin.');
+    throw new Error(i18n.t('auth.adminOnly'));
   }
 
   return data;

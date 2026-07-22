@@ -6,7 +6,6 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import {
   alpha,
-  Alert,
   AppBar,
   Autocomplete,
   Avatar,
@@ -31,25 +30,26 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { navItems } from '../constants/navItems';
 import { useAuth } from '../context/AuthContext';
-import { useAppSettings } from '../context/AppSettingsContext';
 import { useMemo, useState } from 'react';
+import i18n from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { useNotification } from '../context/NotificationContext';
 import { recordSearchQuery } from '../utils/searchHistory';
 
 const drawerWidth = 292;
 
-const globalSearchKeywords: Record<string, string[]> = {
-  '/dashboard': ['головна', 'панель', 'статистика', 'аналітика', 'історія пошуку'],
-  '/teacher-types': ['типи', 'викладачі', 'тип викладача', 'довідник'],
-  '/positions': ['посади', 'посада', 'кадри', 'довідник'],
-  '/teacher-statuses': ['статуси', 'статус викладача', 'стани', 'довідник'],
-  '/workload': ['навантаження', 'години', 'нормативи'],
-  '/study-forms': ['форми навчання', 'форма', 'денна', 'заочна'],
-  '/education-levels': ['рівні навчання', 'рівень', 'освіта'],
-  '/archive': ['архів', 'видалені', 'архівування'],
-  '/roles': ['ролі', 'доступ', 'права', 'користувачі'],
-  '/settings': ['налаштування', 'мова', 'тема', 'режим'],
-};
+const getGlobalSearchKeywords = (): Record<string, string[]> => ({
+  '/dashboard': [i18n.t('search.dashboard').toLowerCase()],
+  '/teacher-types': [i18n.t('search.teacherTypes').toLowerCase()],
+  '/positions': [i18n.t('search.positions').toLowerCase()],
+  '/teacher-statuses': [i18n.t('search.teacherStatuses').toLowerCase()],
+  '/workload': [i18n.t('search.workload').toLowerCase()],
+  '/study-forms': [i18n.t('search.studyForms').toLowerCase()],
+  '/education-levels': [i18n.t('search.educationLevels').toLowerCase()],
+  '/archive': [i18n.t('search.archive').toLowerCase()],
+  '/roles': [i18n.t('search.roles').toLowerCase()],
+  '/settings': [i18n.t('search.settings').toLowerCase()],
+});
 
 export function AppLayout() {
   const theme = useTheme();
@@ -64,7 +64,7 @@ export function AppLayout() {
   const [savingProfile, setSavingProfile] = useState(false);
   const { profile, signOut, updateProfile } = useAuth();
   const { showSuccess, showError } = useNotification();
-  const { t } = useAppSettings();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
 
@@ -72,7 +72,7 @@ export function AppLayout() {
     () =>
       navItems.map((item) => {
         const label = t(item.labelKey);
-        const keywords = [label, item.path, ...(globalSearchKeywords[item.path] ?? [])];
+        const keywords = [label, item.path, ...(getGlobalSearchKeywords()[item.path] ?? [])];
 
         return {
           label,
@@ -93,7 +93,7 @@ export function AppLayout() {
   const initials = profile?.login?.charAt(0)?.toUpperCase() ?? profile?.email?.charAt(0)?.toUpperCase() ?? 'A';
 
   const handleGlobalSearchNavigate = (path: string, query = globalSearchQuery) => {
-    recordSearchQuery(query, 'Пошук по системі');
+    recordSearchQuery(query, t('layout.searchPlaceholder'));
     setGlobalSearchQuery('');
     navigate(path);
   };
@@ -111,12 +111,12 @@ export function AppLayout() {
     const nextPassword = profilePassword.trim();
 
     if (nextPassword && nextPassword.length < 6) {
-      showError('Новий пароль має містити щонайменше 6 символів.');
+      showError(t('message.passwordTooShort'));
       return;
     }
 
     if (nextPassword !== profilePasswordConfirm.trim()) {
-      showError('Паролі не збігаються.');
+      showError(t('message.passwordsDontMatch'));
       return;
     }
 
@@ -128,13 +128,13 @@ export function AppLayout() {
         login: profileLogin,
         password: nextPassword || undefined,
       });
-      showSuccess('Профіль адміністратора оновлено.');
+      showSuccess(t('message.profileUpdated'));
       setProfileOpen(false);
     } catch (error) {
       const message =
         error && typeof error === 'object' && 'message' in error
           ? String((error as { message: string }).message)
-          : 'Не вдалося оновити профіль.';
+          : t('error.profileUpdate');
       showError(message);
     } finally {
       setSavingProfile(false);
@@ -159,7 +159,7 @@ export function AppLayout() {
         <Toolbar sx={{ gap: 2, minHeight: 72 }}>
           {!isDesktop && (
             <IconButton
-              aria-label="Відкрити меню"
+              aria-label={t('layout.openMenu')}
               onClick={() => setMobileOpen(true)}
               edge="start"
             >
@@ -182,7 +182,7 @@ export function AppLayout() {
               return options.filter((option) => option.searchText.includes(normalizedQuery));
             }}
             getOptionLabel={(option) => (typeof option === 'string' ? option : option.label)}
-            noOptionsText="Нічого не знайдено"
+            noOptionsText={t('layout.noResults')}
             onInputChange={(_, value) => setGlobalSearchQuery(value)}
             onChange={(_, option) => {
               if (option && typeof option !== 'string') {
@@ -194,7 +194,7 @@ export function AppLayout() {
             renderInput={(params) => (
               <TextField
                 {...params}
-                placeholder="Пошук по системі"
+                placeholder={t('layout.searchPlaceholder')}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter') {
                     return;
@@ -249,7 +249,7 @@ export function AppLayout() {
             }}
             sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
           >
-            Вийти
+            {t('layout.logout')}
           </Button>
 
           <Divider flexItem orientation="vertical" sx={{ display: { xs: 'none', sm: 'block' } }} />
@@ -272,7 +272,7 @@ export function AppLayout() {
             <Avatar sx={{ bgcolor: 'primary.main', width: 38, height: 38 }}>{initials}</Avatar>
             <Box sx={{ display: { xs: 'none', md: 'block' } }}>
               <Typography variant="body2" fontWeight={700}>
-                {profile?.login || 'Адміністратор'}
+                {profile?.login || t('layout.administrator')}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {profile?.email ?? 'admin'}
@@ -322,15 +322,11 @@ export function AppLayout() {
       </Box>
 
       <Dialog open={profileOpen} onClose={() => setProfileOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Профіль адміністратора</DialogTitle>
+        <DialogTitle>{t('profile.title')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
-            <Alert severity="info">
-              Тут можна змінити email і логін єдиного адміністратора. Supabase може попросити
-              підтвердити новий email.
-            </Alert>
             <TextField
-              label="Email"
+              label={t('profile.email')}
               type="email"
               value={profileEmail}
               onChange={(event) => setProfileEmail(event.target.value)}
@@ -338,7 +334,7 @@ export function AppLayout() {
               required
             />
             <TextField
-              label="Логін"
+              label={t('profile.login')}
               value={profileLogin}
               onChange={(event) => setProfileLogin(event.target.value)}
               fullWidth
@@ -352,17 +348,17 @@ export function AppLayout() {
               }}
             />
             <TextField
-              label="Новий пароль"
+              label={t('profile.newPassword')}
               type={showProfilePassword ? 'text' : 'password'}
               value={profilePassword}
               onChange={(event) => setProfilePassword(event.target.value)}
               fullWidth
-              helperText="Залиште порожнім, якщо пароль змінювати не потрібно."
+              helperText={t('profile.passwordHint')}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
-                      aria-label={showProfilePassword ? 'Сховати пароль' : 'Показати пароль'}
+                      aria-label={showProfilePassword ? t('login.hidePassword') : t('login.showPassword')}
                       onClick={() => setShowProfilePassword((current) => !current)}
                       edge="end"
                     >
@@ -373,7 +369,7 @@ export function AppLayout() {
               }}
             />
             <TextField
-              label="Повторіть новий пароль"
+              label={t('profile.confirmPassword')}
               type={showProfilePassword ? 'text' : 'password'}
               value={profilePasswordConfirm}
               onChange={(event) => setProfilePasswordConfirm(event.target.value)}
@@ -384,10 +380,10 @@ export function AppLayout() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setProfileOpen(false)} disabled={savingProfile}>
-            Скасувати
+            {t('confirm.cancel')}
           </Button>
           <Button variant="contained" onClick={() => void handleSaveProfile()} disabled={savingProfile}>
-            Зберегти
+            {t('confirm.confirm')}
           </Button>
         </DialogActions>
       </Dialog>

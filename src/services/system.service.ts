@@ -1,4 +1,7 @@
+import { ARCHIVE_TABLE } from '../constants/tableNames';
+import i18n from 'i18next';
 import { supabase } from '../lib/supabase/client';
+import { getSupabaseErrorMessage } from '../utils/directory';
 import { pingManageRolesFunction } from './roles.service';
 
 export interface DiagnosticCheck {
@@ -6,14 +9,6 @@ export interface DiagnosticCheck {
   label: string;
   ok: boolean;
   message: string;
-}
-
-function getErrorMessage(error: unknown) {
-  if (error && typeof error === 'object' && 'message' in error) {
-    return String((error as { message: string }).message);
-  }
-
-  return 'Невідома помилка.';
 }
 
 export async function runSystemDiagnostics(): Promise<DiagnosticCheck[]> {
@@ -30,19 +25,19 @@ export async function runSystemDiagnostics(): Promise<DiagnosticCheck[]> {
       key: 'auth',
       label: 'Supabase Auth',
       ok: Boolean(data.session),
-      message: data.session ? 'Активна сесія знайдена.' : 'Активної сесії немає.',
+      message: data.session ? i18n.t('diagnostics.authOk') : i18n.t('diagnostics.authFail'),
     });
   } catch (error) {
     checks.push({
       key: 'auth',
       label: 'Supabase Auth',
       ok: false,
-      message: getErrorMessage(error),
+      message: getSupabaseErrorMessage(error, i18n.t('error.unknown')),
     });
   }
 
   try {
-    const { error } = await supabase.from('Архів').select('id', { count: 'exact', head: true });
+    const { error } = await supabase.from(ARCHIVE_TABLE).select('id', { count: 'exact', head: true });
 
     if (error) {
       throw error;
@@ -50,16 +45,16 @@ export async function runSystemDiagnostics(): Promise<DiagnosticCheck[]> {
 
     checks.push({
       key: 'database',
-      label: 'База даних',
+      label: i18n.t('diagnostics.database'),
       ok: true,
-      message: 'Запит до таблиці Архів виконано успішно.',
+      message: i18n.t('diagnostics.databaseOk'),
     });
   } catch (error) {
     checks.push({
       key: 'database',
-      label: 'База даних',
+      label: i18n.t('diagnostics.database'),
       ok: false,
-      message: getErrorMessage(error),
+      message: getSupabaseErrorMessage(error, i18n.t('error.unknown')),
     });
   }
 
@@ -70,14 +65,14 @@ export async function runSystemDiagnostics(): Promise<DiagnosticCheck[]> {
       key: 'edge-function',
       label: 'Edge Function manage-roles',
       ok: true,
-      message: 'Функція відповіла на ping.',
+      message: i18n.t('diagnostics.edgeFunctionOk'),
     });
   } catch (error) {
     checks.push({
       key: 'edge-function',
       label: 'Edge Function manage-roles',
       ok: false,
-      message: getErrorMessage(error),
+      message: getSupabaseErrorMessage(error, i18n.t('error.unknown')),
     });
   }
 

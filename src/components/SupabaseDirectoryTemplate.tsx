@@ -1,5 +1,6 @@
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import EditRoadIcon from '@mui/icons-material/EditRoad';
 import {
   Box,
   Button,
@@ -12,6 +13,7 @@ import {
   TextField,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { SupabaseDirectoryKey } from '../config/directories';
 import { useDirectory } from '../hooks/useDirectory';
 import { useSearch } from '../hooks/useSearch';
@@ -24,6 +26,7 @@ import { DataTable } from './DataTable';
 import { LoadingOverlay } from './LoadingOverlay';
 import { PageHeader } from './PageHeader';
 import { SearchField } from './SearchField';
+import { RecordEditDialog } from './directory/RecordEditDialog';
 
 interface SupabaseDirectoryTemplateProps {
   directoryKey: SupabaseDirectoryKey;
@@ -37,6 +40,7 @@ function createEmptyValues(fieldKeys: string[]): DirectoryRecordMap {
 }
 
 export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTemplateProps) {
+  const { t } = useTranslation();
   const {
     config,
     items,
@@ -48,6 +52,7 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
     createRecord,
     updateRecord,
     archiveRecord,
+    massUpdate,
     getPrimaryValue,
   } = useDirectory(directoryKey);
 
@@ -57,6 +62,11 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
   const [statusOptions, setStatusOptions] = useState<
     Array<{ code: string; label: string }>
   >([]);
+
+  const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
+  const [massEditOpen, setMassEditOpen] = useState(false);
+  const [massEditField, setMassEditField] = useState('');
+  const [massEditValue, setMassEditValue] = useState('');
 
   useEffect(() => {
     if (directoryKey !== 'workload') {
@@ -105,8 +115,10 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
       config.fields.map((field) => ({
         key: field.key,
         label: field.label,
-        minWidth: field.key === config.primaryKey ? 120 : 220,
-        sortable: true,
+        minWidth: field.minWidth ?? (field.key === config.primaryKey ? 120 : 220),
+        align: field.align,
+        sortable: field.sortable ?? true,
+        format: field.format,
       })),
     [config.fields, config.primaryKey],
   );
@@ -116,21 +128,22 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
     config.primaryKey,
   );
 
+  const massEditFields = useMemo(
+    () => config.fields.filter((f) => !f.readOnlyOnEdit),
+    [config.fields],
+  );
+
   const closeDialog = () => {
     setEditingRecord(null);
     setIsEditMode(false);
   };
 
-  const handleSubmit = async () => {
-    if (!editingRecord) {
-      return;
-    }
-
-    const primaryValue = String(editingRecord[config.primaryKey] ?? '');
+  const handleSubmit = async (values: DirectoryRecordMap) => {
+    const primaryValue = String(values[config.primaryKey] ?? '');
 
     const success = isEditMode
-      ? await updateRecord(primaryValue, editingRecord)
-      : await createRecord(editingRecord);
+      ? await updateRecord(primaryValue, values)
+      : await createRecord(values);
 
     if (success) {
       closeDialog();
@@ -147,12 +160,23 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
     setEditingRecord({ ...record });
   };
 
+  const handleMassEdit = async () => {
+    const primaryValues = Array.from(selectedKeys).map(String);
+    const success = await massUpdate(primaryValues, massEditField, massEditValue || null);
+    if (success) {
+      setSelectedKeys(new Set());
+      setMassEditOpen(false);
+      setMassEditField('');
+      setMassEditValue('');
+    }
+  };
+
   return (
     <>
       <PageHeader
         title={config.title}
         subtitle={config.subtitle}
-        actionLabel="Додати"
+        actionLabel={t('directory.add')}
         onAction={openCreateDialog}
       />
 
@@ -162,13 +186,13 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
             <SearchField
               value={query}
               onChange={setQuery}
-              placeholder={`Пошук у розділі "${config.title}"`}
+              placeholder={t('directory.searchIn', { title: config.title })}
               historySource={config.title}
             />
           </Box>
           <TextField
             select
-            label="Фільтр"
+            label={t('directory.filter')}
             value={filterField}
             onChange={(event) => setFilterField(event.target.value)}
             sx={{ minWidth: { xs: '100%', md: 240 } }}
@@ -182,30 +206,51 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
           </TextField>
         </Stack>
 
+        {selectedKeys.size > 0 && (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              variant="outlined"
+              startIcon={<EditRoadIcon />}
+              onClick={() => {
+                setMassEditField(massEditFields[0]?.key ?? '');
+                setMassEditValue('');
+                setMassEditOpen(true);
+              }}
+            >
+              {t('directory.massEdit')} ({selectedKeys.size})
+            </Button>
+            <Button variant="text" color="inherit" onClick={() => setSelectedKeys(new Set())}>
+              {t('common.cancel')}
+            </Button>
+          </Stack>
+        )}
+
         {loading ? (
           <LoadingOverlay />
         ) : (
           <DataTable
             columns={tableColumns}
             rows={sortedItems}
-            rowKey={(row) => getPrimaryValue(row)}
+            rowKey={getPrimaryValue}
             sortKey={sortKey}
             sortDirection={sortDirection}
-            onSort={(key) => toggleSort(key)}
+            onSort={toggleSort}
+            selectedKeys={selectedKeys}
+            onSelectionChange={setSelectedKeys}
             actions={(row) => (
               <>
                 <ActionButton
                   icon={<EditOutlinedIcon fontSize="small" />}
                   onClick={() => openEditDialog(row)}
                 >
-                  Редагувати
+                  {t('directory.edit')}
                 </ActionButton>
                 <ActionButton
                   icon={<ArchiveOutlinedIcon fontSize="small" />}
                   color="warning"
                   onClick={() => setArchiveCandidate(row)}
                 >
-                  До архіву
+                  {t('directory.toArchive')}
                 </ActionButton>
               </>
             )}
@@ -213,79 +258,23 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
         )}
       </Stack>
 
-      <Dialog open={Boolean(editingRecord)} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{isEditMode ? 'Редагувати запис' : 'Додати запис'}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ pt: 1 }}>
-            {config.fields.map((field) => {
-              const disabled = Boolean(isEditMode && field.readOnlyOnEdit);
-              const value = editingRecord?.[field.key] ?? '';
-
-              if (
-                directoryKey === 'workload' &&
-                field.key === 'Код_статусу_викладача' &&
-                !isEditMode
-              ) {
-                return (
-                  <TextField
-                    key={field.key}
-                    label={field.label}
-                    select
-                    value={value}
-                    onChange={(event) =>
-                      setEditingRecord((current) =>
-                        current ? { ...current, [field.key]: event.target.value } : current,
-                      )
-                    }
-                    fullWidth
-                    required
-                  >
-                    {statusOptions.map((option) => (
-                      <MenuItem key={option.code} value={option.code}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                );
-              }
-
-              return (
-                <TextField
-                  key={field.key}
-                  label={field.label}
-                  type={field.type === 'number' ? 'number' : 'text'}
-                  value={value}
-                  onChange={(event) =>
-                    setEditingRecord((current) =>
-                      current ? { ...current, [field.key]: event.target.value } : current,
-                    )
-                  }
-                  fullWidth
-                  required={field.required}
-                  disabled={disabled}
-                  inputProps={field.maxLength ? { maxLength: field.maxLength } : undefined}
-                  multiline={field.type !== 'number' && field.maxLength === 500}
-                  minRows={field.type !== 'number' && field.maxLength === 500 ? 2 : undefined}
-                />
-              );
-            })}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={closeDialog} disabled={saving}>
-            Скасувати
-          </Button>
-          <Button variant="contained" onClick={() => void handleSubmit()} disabled={saving}>
-            Зберегти
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RecordEditDialog
+        open={Boolean(editingRecord)}
+        isEditMode={isEditMode}
+        fields={config.fields}
+        record={editingRecord}
+        saving={saving}
+        statusOptions={statusOptions}
+        showStatusSelect={directoryKey === 'workload'}
+        onClose={closeDialog}
+        onSubmit={(values) => void handleSubmit(values)}
+      />
 
       <ConfirmDialog
         open={Boolean(archiveCandidate)}
-        title="Перемістити до архіву?"
-        description="Запис буде прибрано з активного довідника та збережено в архіві. Його можна буде відновити пізніше."
-        confirmLabel="До архіву"
+        title={t('directory.archiveConfirm')}
+        description={t('directory.archiveConfirmDescription')}
+        confirmLabel={t('directory.archiveConfirmLabel')}
         confirmColor="warning"
         loading={saving}
         onClose={() => setArchiveCandidate(null)}
@@ -301,6 +290,47 @@ export function SupabaseDirectoryTemplate({ directoryKey }: SupabaseDirectoryTem
           });
         }}
       />
+
+      <Dialog open={massEditOpen} onClose={() => setMassEditOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('directory.massEditTitle', { count: selectedKeys.size })}</DialogTitle>
+        <DialogContent sx={{ pt: '16px !important' }}>
+          <Stack spacing={2}>
+            <TextField
+              select
+              label={t('directory.massEditField')}
+              value={massEditField}
+              onChange={(event) => {
+                setMassEditField(event.target.value);
+                setMassEditValue('');
+              }}
+              fullWidth
+              size="small"
+            >
+              {massEditFields.map((field) => (
+                <MenuItem key={field.key} value={field.key}>
+                  {field.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label={t('directory.massEditValue')}
+              value={massEditValue}
+              onChange={(event) => setMassEditValue(event.target.value)}
+              fullWidth
+              size="small"
+              placeholder={t('directory.massEditValuePlaceholder')}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setMassEditOpen(false)} disabled={saving}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="contained" onClick={() => void handleMassEdit()} disabled={saving || !massEditField}>
+            {t('common.confirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

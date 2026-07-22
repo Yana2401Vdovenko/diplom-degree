@@ -1,3 +1,4 @@
+import { ARCHIVE_TABLE } from '../constants/tableNames';
 import { directoryConfigs, supabaseDirectoryKeys } from '../config/directories';
 import { supabase } from '../lib/supabase/client';
 import type { ArchiveRow } from '../types/database';
@@ -42,7 +43,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   );
 
   const { count: archiveCount, error: archiveError } = await supabase
-    .from('Архів')
+    .from(ARCHIVE_TABLE)
     .select('*', { count: 'exact', head: true });
 
   if (archiveError) {
@@ -50,7 +51,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   }
 
   const { data: latestArchiveRecords, error: latestArchiveError } = await supabase
-    .from('Архів')
+    .from(ARCHIVE_TABLE)
     .select('*')
     .order('Дата_архівації', { ascending: false })
     .limit(5);

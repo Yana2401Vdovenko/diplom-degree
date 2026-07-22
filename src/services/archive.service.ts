@@ -1,11 +1,13 @@
 import { getDirectoryConfigByTable } from '../config/directories';
+import { ARCHIVE_TABLE } from '../constants/tableNames';
+import i18n from 'i18next';
 import { supabase } from '../lib/supabase/client';
 import type { ArchiveRow } from '../types/database';
 import { isManagedDirectoryTable } from '../utils/directory';
 
 export async function fetchArchiveRecords() {
   const { data, error } = await supabase
-    .from('Архів')
+    .from(ARCHIVE_TABLE)
     .select('*')
     .order('Дата_архівації', { ascending: false });
 
@@ -18,13 +20,13 @@ export async function fetchArchiveRecords() {
 
 export async function restoreArchiveRecord(record: ArchiveRow) {
   if (!isManagedDirectoryTable(record.Таблиця)) {
-    throw new Error(`Невідома таблиця для відновлення: ${record.Таблиця}`);
+    throw new Error(i18n.t('archive.unknownTable', { table: record.Таблиця }));
   }
 
   const config = getDirectoryConfigByTable(record.Таблиця);
 
   if (!config) {
-    throw new Error(`Не знайдено конфігурацію для таблиці ${record.Таблиця}`);
+    throw new Error(i18n.t('archive.configNotFound', { table: record.Таблиця }));
   }
 
   const payload =
@@ -80,7 +82,7 @@ export async function deleteArchiveRecordsOlderThan(days: number) {
   threshold.setDate(threshold.getDate() - days);
 
   const { error } = await supabase
-    .from('Архів')
+    .from(ARCHIVE_TABLE)
     .delete()
     .lt('Дата_архівації', threshold.toISOString());
 

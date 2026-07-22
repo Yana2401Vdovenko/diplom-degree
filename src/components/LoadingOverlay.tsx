@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
 interface LoadingOverlayProps {
@@ -5,7 +6,8 @@ interface LoadingOverlayProps {
   label?: string;
 }
 
-export function LoadingOverlay({ loading = true, label = 'Завантаження...' }: LoadingOverlayProps) {
+export function LoadingOverlay({ loading = true, label }: LoadingOverlayProps) {
+  const { t } = useTranslation();
   if (!loading) {
     return null;
   }
@@ -20,7 +22,7 @@ export function LoadingOverlay({ loading = true, label = 'Завантаженн
       }}
     >
       <CircularProgress size={42} />
-      <Typography color="text.secondary">{label}</Typography>
+      <Typography color="text.secondary">{label ?? t('common.loading')}</Typography>
     </Box>
   );
 }

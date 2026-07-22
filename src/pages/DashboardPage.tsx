@@ -19,10 +19,10 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { PageHeader } from '../components/PageHeader';
-import { useAppSettings } from '../context/AppSettingsContext';
 import { useDashboard } from '../hooks/useDashboard';
 import {
   getSearchHistory,
@@ -37,21 +37,21 @@ function getServerLoadLevel(responseMs: number, totalRecords: number) {
   return Math.min(100, responseScore + recordsScore);
 }
 
-function getServerLoadLabel(value: number) {
+function getServerLoadLabel(t: (key: string) => string, value: number) {
   if (value >= 75) {
-    return 'високе навантаження';
+    return t('dashboard.highLoad');
   }
 
   if (value >= 45) {
-    return 'помірне навантаження';
+    return t('dashboard.moderateLoad');
   }
 
-  return 'стабільно';
+  return t('dashboard.stable');
 }
 
 export function DashboardPage() {
   const { stats, loading } = useDashboard();
-  const { t } = useAppSettings();
+  const { t } = useTranslation();
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory());
 
   useEffect(() => subscribeToSearchHistory(() => setSearchHistory(getSearchHistory())), []);
@@ -71,19 +71,19 @@ export function DashboardPage() {
 
     const biggestDirectory = [...stats.directories].sort((a, b) => b.count - a.count)[0];
     const insights = [
-      `Найбільше активних записів зараз у розділі "${biggestDirectory?.title ?? 'довідники'}".`,
+      t('insight.mostActiveSection', { section: biggestDirectory?.title ?? t('nav.dashboard') }),
       stats.archiveCount > 0
-        ? `В архіві є ${stats.archiveCount} записів. Варто періодично очищати або переглядати їх.`
-        : 'Архів порожній, зайвих видалених записів немає.',
-      `Стан БД: ${getServerLoadLabel(serverLoad)}, відповідь приблизно ${stats.databaseResponseMs} мс.`,
+        ? t('insight.archiveNotEmpty', { count: stats.archiveCount })
+        : t('insight.archiveEmpty'),
+      t('insight.dbStatus', { status: getServerLoadLabel(t, serverLoad), ms: stats.databaseResponseMs }),
     ];
 
     if (serverLoad >= 75) {
-      insights.push('AI-порада: перевірити великі таблиці, архів і часті запити пошуку.');
+      insights.push(t('insight.aiAdvice'));
     }
 
     return insights;
-  }, [serverLoad, stats]);
+  }, [serverLoad, stats, t]);
 
   return (
     <>
@@ -103,7 +103,7 @@ export function DashboardPage() {
                   <Box sx={{ flex: 1 }}>
                     <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
                       <AutoAwesomeIcon color="primary" />
-                      <Typography variant="h3">AI-аналітика системи</Typography>
+                      <Typography variant="h3">{t('dashboard.aiAnalytics')}</Typography>
                     </Stack>
                     <Stack spacing={1}>
                       {aiInsights.map((insight) => (
@@ -117,14 +117,14 @@ export function DashboardPage() {
                   <Box sx={{ flex: 1 }}>
                     <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
                       <SpeedIcon color="primary" />
-                      <Typography variant="h3">Навантаження серверу та БД</Typography>
+                      <Typography variant="h3">{t('dashboard.serverLoad')}</Typography>
                     </Stack>
                     <Stack spacing={1.5}>
                       <Stack direction="row" justifyContent="space-between">
-                        <Typography color="text.secondary">Поточний стан</Typography>
+                        <Typography color="text.secondary">{t('dashboard.currentState')}</Typography>
                         <Chip
                           color={serverLoad >= 75 ? 'error' : serverLoad >= 45 ? 'warning' : 'success'}
-                          label={getServerLoadLabel(serverLoad)}
+                          label={getServerLoadLabel(t, serverLoad)}
                         />
                       </Stack>
                       <LinearProgress
@@ -133,9 +133,9 @@ export function DashboardPage() {
                         color={serverLoad >= 75 ? 'error' : serverLoad >= 45 ? 'warning' : 'success'}
                       />
                       <Typography variant="body2" color="text.secondary">
-                        Час відповіді БД: {stats?.databaseResponseMs ?? 0} мс. Активні записи:
+                        {t('dashboard.dbResponseTime')}: {stats?.databaseResponseMs ?? 0} {t('dashboard.ms')}. {t('dashboard.activeRecordsLabel')}:
                         {' '}
-                        {stats?.totalDirectoryRecords ?? 0}. Архів: {stats?.archiveCount ?? 0}.
+                        {stats?.totalDirectoryRecords ?? 0}. {t('dashboard.archiveLabel')}: {stats?.archiveCount ?? 0}.
                       </Typography>
                     </Stack>
                   </Box>
@@ -174,7 +174,7 @@ export function DashboardPage() {
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography color="text.secondary" fontWeight={700} gutterBottom>
-                  Архів
+                  {t('dashboard.archiveLabel')}
                 </Typography>
                 <Typography variant="h2" sx={{ mb: 1 }}>
                   {stats?.archiveCount ?? 0}
@@ -199,9 +199,6 @@ export function DashboardPage() {
               <CardContent>
                 <Stack spacing={1}>
                   <Typography variant="h3">{t('dashboard.quickActions')}</Typography>
-                  <Typography color="text.secondary">
-                    {t('dashboard.quickActionsText')}
-                  </Typography>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ pt: 1 }}>
                     <Button component={RouterLink} to="/roles" variant="outlined">
                       {t('nav.roles')}
@@ -223,7 +220,7 @@ export function DashboardPage() {
               <CardContent>
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
                   <DeleteSweepIcon color="primary" />
-                  <Typography variant="h3">Історія видалень та архівування</Typography>
+                  <Typography variant="h3">{t('dashboard.deleteHistory')}</Typography>
                 </Stack>
                 {stats?.latestArchiveRecords.length ? (
                   <List dense disablePadding>
@@ -237,7 +234,7 @@ export function DashboardPage() {
                     ))}
                   </List>
                 ) : (
-                  <Typography color="text.secondary">Поки немає архівованих записів.</Typography>
+                  <Typography color="text.secondary">{t('dashboard.noArchivedRecords')}</Typography>
                 )}
               </CardContent>
             </Card>
@@ -248,7 +245,7 @@ export function DashboardPage() {
               <CardContent>
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
                   <ManageSearchIcon color="primary" />
-                  <Typography variant="h3">Історія пошуку</Typography>
+                  <Typography variant="h3">{t('dashboard.searchHistory')}</Typography>
                 </Stack>
                 {searchHistory.length ? (
                   <List dense disablePadding>
@@ -263,7 +260,7 @@ export function DashboardPage() {
                   </List>
                 ) : (
                   <Typography color="text.secondary">
-                    Пошукові запити з’являться тут після використання пошуку в розділах.
+                    {t('dashboard.searchHint')}
                   </Typography>
                 )}
               </CardContent>

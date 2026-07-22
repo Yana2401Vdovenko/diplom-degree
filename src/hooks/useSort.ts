@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -40,7 +40,7 @@ export function useSort<T>(
     return copy;
   }, [items, sortDirection, sortKey]);
 
-  const toggleSort = (key: keyof T) => {
+  const toggleSort = useCallback((key: keyof T) => {
     if (key === sortKey) {
       setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
       return;
@@ -48,7 +48,7 @@ export function useSort<T>(
 
     setSortKey(key);
     setSortDirection('asc');
-  };
+  }, [sortKey]);
 
   return {
     sortKey,

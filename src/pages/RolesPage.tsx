@@ -30,19 +30,19 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/ActionButton';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DataTable } from '../components/DataTable';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { PageHeader } from '../components/PageHeader';
-import {
-  rolePermissionTables,
-  type RolePermissionTableName,
-} from '../config/rolePermissionTables';
+import { rolePermissionTables } from '../config/rolePermissionTables';
 import { useNotification } from '../context/NotificationContext';
 import {
   addRole,
   assignRoleToUserByEmail,
+  createEmptyTablePermissions,
+  createPermissionSet,
   deleteRole,
   fetchRolesConfig,
   fetchUsersWithRoles,
@@ -56,30 +56,10 @@ import {
 } from '../services/roles.service';
 import { getSupabaseErrorMessage } from '../utils/directory';
 
-const permissionActions: Array<{ key: RolePermissionAction; label: string }> = [
-  { key: 'read', label: 'Перегляд' },
-  { key: 'create', label: 'Додавати' },
-  { key: 'update', label: 'Редагувати' },
-  { key: 'delete', label: 'Видаляти / архівувати' },
-];
-
-function createPermissionSet(value: boolean): RolePermissionSet {
-  return {
-    read: value,
-    create: value,
-    update: value,
-    delete: value,
-  };
-}
-
-function createEmptyRolePermissions(): RoleTablePermissions {
-  return rolePermissionTables.reduce((accumulator, row) => {
-    accumulator[row.tableName] = createPermissionSet(false);
-    return accumulator;
-  }, {} as RoleTablePermissions);
-}
+const permissionActions: RolePermissionAction[] = ['read', 'create', 'update', 'delete'];
 
 export function RolesPage() {
+  const { t } = useTranslation();
   const { showSuccess, showError } = useNotification();
   const [roles, setRoles] = useState<string[]>([]);
   const [permissions, setPermissions] = useState<RolePermissionsConfig>({});
@@ -93,6 +73,16 @@ export function RolesPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState('');
   const [assignRole, setAssignRole] = useState('');
+
+  const permissionLabels: Array<{ key: RolePermissionAction; label: string }> = useMemo(
+    () => [
+      { key: 'read', label: t('roles.permission.read') },
+      { key: 'create', label: t('roles.permission.create') },
+      { key: 'update', label: t('roles.permission.update') },
+      { key: 'delete', label: t('roles.permission.delete') },
+    ],
+    [t],
+  );
 
   const assignedUsers = useMemo(
     () =>
@@ -113,29 +103,22 @@ export function RolesPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     setUsersError(null);
-
     try {
       const nextConfig = await fetchRolesConfig();
       applyRolesConfig(nextConfig);
-
       try {
         const nextUsers = await fetchUsersWithRoles();
         setUsers(nextUsers);
       } catch (usersLoadError) {
         setUsers([]);
-        setUsersError(
-          getSupabaseErrorMessage(
-            usersLoadError,
-            'Не вдалося завантажити email користувачів через Edge Function manage-roles.',
-          ),
-        );
+        setUsersError(getSupabaseErrorMessage(usersLoadError, t('error.loadUsers')));
       }
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося завантажити ролі.'));
+      showError(getSupabaseErrorMessage(error, t('error.loadRoles')));
     } finally {
       setLoading(false);
     }
-  }, [applyRolesConfig, showError]);
+  }, [applyRolesConfig, showError, t]);
 
   useEffect(() => {
     void loadData();
@@ -143,54 +126,45 @@ export function RolesPage() {
 
   const handleAddRole = async () => {
     setSaving(true);
-
     try {
       const config = await addRole(newRole);
       applyRolesConfig(config);
       setNewRole('');
-      showSuccess('Роль додано.');
+      showSuccess(t('message.roleAdded'));
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося додати роль.'));
+      showError(getSupabaseErrorMessage(error, t('error.addRole')));
     } finally {
       setSaving(false);
     }
   };
 
   const handleRenameRole = async () => {
-    if (!renameTarget) {
-      return;
-    }
-
+    if (!renameTarget) return;
     setSaving(true);
-
     try {
       const config = await renameRole(renameTarget, renameValue);
       applyRolesConfig(config);
       setRenameTarget(null);
       setRenameValue('');
-      showSuccess('Роль перейменовано.');
+      showSuccess(t('message.roleRenamed'));
       await loadData();
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося перейменувати роль.'));
+      showError(getSupabaseErrorMessage(error, t('error.renameRole')));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteRole = async () => {
-    if (!deleteTarget) {
-      return;
-    }
-
+    if (!deleteTarget) return;
     setSaving(true);
-
     try {
       const config = await deleteRole(deleteTarget);
       applyRolesConfig(config);
       setDeleteTarget(null);
-      showSuccess('Роль видалено.');
+      showSuccess(t('message.roleDeleted'));
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося видалити роль.'));
+      showError(getSupabaseErrorMessage(error, t('error.deleteRole')));
     } finally {
       setSaving(false);
     }
@@ -198,19 +172,13 @@ export function RolesPage() {
 
   const handleAssignRole = async () => {
     setSaving(true);
-
     try {
       await assignRoleToUserByEmail(assignEmail, assignRole);
       setAssignEmail('');
-      showSuccess('Роль призначено користувачу.');
+      showSuccess(t('message.roleAssigned'));
       await loadData();
     } catch (error) {
-      showError(
-        getSupabaseErrorMessage(
-          error,
-          'Не вдалося призначити роль. Перевірте Edge Function manage-roles.',
-        ),
-      );
+      showError(getSupabaseErrorMessage(error, t('error.assignRole')));
     } finally {
       setSaving(false);
     }
@@ -218,16 +186,14 @@ export function RolesPage() {
 
   const handleTogglePermission = (
     role: string,
-    tableName: RolePermissionTableName,
+    tableName: string,
     action: RolePermissionAction,
   ) => {
-    if (role === 'admin') {
-      return;
-    }
+    if (role === 'admin') return;
 
     setPermissions((current) => {
-      const rolePermissions = current[role] ?? createEmptyRolePermissions();
-      const tablePermissions = rolePermissions[tableName] ?? createPermissionSet(false);
+      const rolePermissions = current[role] ?? createEmptyTablePermissions();
+      const tablePermissions = rolePermissions[tableName as keyof RoleTablePermissions] ?? createPermissionSet(false);
       const nextTablePermissions: RolePermissionSet = {
         ...tablePermissions,
         [action]: !tablePermissions[action],
@@ -255,64 +221,41 @@ export function RolesPage() {
 
   const handleSavePermissions = async (role: string) => {
     const rolePermissions = permissions[role];
-
-    if (!rolePermissions) {
-      return;
-    }
-
+    if (!rolePermissions) return;
     setSaving(true);
-
     try {
       const config = await updateRolePermissions(role, rolePermissions);
       applyRolesConfig(config);
-      showSuccess(`Права для ролі "${role}" збережено.`);
+      showSuccess(t('message.permissionsSaved', { role }));
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося зберегти права ролі.'));
+      showError(getSupabaseErrorMessage(error, t('error.savePermissions')));
     } finally {
       setSaving(false);
     }
   };
 
   const getPermissionsSummary = (role: string) => {
-    if (role === 'admin') {
-      return 'Повний доступ';
-    }
-
+    if (role === 'admin') return t('roles.fullAccess');
     const rolePermissions = permissions[role];
-
-    if (!rolePermissions) {
-      return 'Не налаштовано';
-    }
-
+    if (!rolePermissions) return t('roles.notConfigured');
     const allowedTables = rolePermissionTables.filter((row) =>
-      permissionActions.some((action) => rolePermissions[row.tableName]?.[action.key]),
+      permissionActions.some((action) => rolePermissions[row.tableName]?.[action]),
     ).length;
-
-    return `${allowedTables} з ${rolePermissionTables.length} таблиць`;
+    return t('roles.tablesCount', { allowed: allowedTables, total: rolePermissionTables.length });
   };
 
   return (
     <>
-      <PageHeader
-        title="Ролі користувачів"
-        subtitle="Реєстр ролей, призначення користувачам і просте налаштування прав доступу."
-      />
+      <PageHeader title={t('roles.title')} subtitle={t('roles.subtitle')} />
 
       <Stack spacing={2.5}>
-        <Alert severity="info">
-          Ролі та політики зберігаються у bucket `app-config/roles.json`. Призначення ролі
-          користувачам виконується через Edge Function `manage-roles`, а права нижче можна
-          виставляти галочками для кожної таблиці.
-        </Alert>
 
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Додати роль
-            </Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>{t('roles.addRole')}</Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
-                label="Назва ролі"
+                label={t('roles.roleName')}
                 value={newRole}
                 onChange={(event) => setNewRole(event.target.value)}
                 fullWidth
@@ -324,7 +267,7 @@ export function RolesPage() {
                 onClick={() => void handleAddRole()}
                 disabled={saving}
               >
-                Додати
+                {t('roles.add')}
               </Button>
             </Stack>
           </CardContent>
@@ -335,8 +278,8 @@ export function RolesPage() {
         ) : (
           <DataTable
             columns={[
-              { key: 'role', label: 'Роль', minWidth: 220 },
-              { key: 'access', label: 'Політики доступу', minWidth: 220 },
+              { key: 'role', label: t('roles.role'), minWidth: 220 },
+              { key: 'access', label: t('roles.accessPolicies'), minWidth: 220 },
             ]}
             rows={roles.map((role) => ({ role, access: getPermissionsSummary(role) }))}
             rowKey={(row) => row.role}
@@ -349,7 +292,7 @@ export function RolesPage() {
                     setRenameValue(row.role);
                   }}
                 >
-                  Перейменувати
+                  {t('roles.rename')}
                 </ActionButton>
                 <ActionButton
                   icon={<DeleteOutlineIcon fontSize="small" />}
@@ -357,7 +300,7 @@ export function RolesPage() {
                   onClick={() => setDeleteTarget(row.role)}
                   disabled={row.role === 'admin'}
                 >
-                  Видалити
+                  {t('roles.delete')}
                 </ActionButton>
               </>
             )}
@@ -366,52 +309,27 @@ export function RolesPage() {
 
         {!loading && (
           <Box>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Політики доступу
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              Розгорніть роль і виберіть, що вона може робити з конкретними таблицями.
-            </Typography>
-
+            <Typography variant="h6" sx={{ mb: 1 }}>{t('roles.accessPolicies')}</Typography>
             <Stack spacing={1.5}>
               {roles.map((role) => {
-                const rolePermissions = permissions[role] ?? createEmptyRolePermissions();
+                const rolePermissions = permissions[role] ?? createEmptyTablePermissions();
                 const isAdminRole = role === 'admin';
-
                 return (
                   <Accordion key={role} variant="outlined" disableGutters>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Stack
-                        direction={{ xs: 'column', sm: 'row' }}
-                        spacing={1}
-                        alignItems={{ xs: 'flex-start', sm: 'center' }}
-                        sx={{ width: '100%', pr: 2 }}
-                      >
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ width: '100%', pr: 2 }}>
                         <Typography sx={{ fontWeight: 700, flex: 1 }}>{role}</Typography>
-                        <Chip
-                          size="small"
-                          color={isAdminRole ? 'success' : 'primary'}
-                          variant={isAdminRole ? 'filled' : 'outlined'}
-                          label={getPermissionsSummary(role)}
-                        />
+                        <Chip size="small" color={isAdminRole ? 'success' : 'primary'} variant={isAdminRole ? 'filled' : 'outlined'} label={getPermissionsSummary(role)} />
                       </Stack>
                     </AccordionSummary>
                     <AccordionDetails>
-                      {isAdminRole && (
-                        <Alert severity="success" sx={{ mb: 2 }}>
-                          Роль admin має повний доступ до всіх таблиць і не редагується.
-                        </Alert>
-                      )}
-
                       <TableContainer sx={{ overflowX: 'auto' }}>
                         <Table size="small" sx={{ minWidth: 780 }}>
                           <TableHead>
                             <TableRow>
-                              <TableCell sx={{ minWidth: 220 }}>Таблиця</TableCell>
-                              {permissionActions.map((action) => (
-                                <TableCell key={action.key} align="center" sx={{ minWidth: 130 }}>
-                                  {action.label}
-                                </TableCell>
+                              <TableCell sx={{ minWidth: 220 }}>{t('settings.table')}</TableCell>
+                              {permissionLabels.map((action) => (
+                                <TableCell key={action.key} align="center" sx={{ minWidth: 130 }}>{action.label}</TableCell>
                               ))}
                             </TableRow>
                           </TableHead>
@@ -420,21 +338,14 @@ export function RolesPage() {
                               <TableRow key={row.tableName} hover>
                                 <TableCell>
                                   <Typography sx={{ fontWeight: 700 }}>{row.label}</Typography>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {row.group} · {row.tableName}
-                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">{row.group} · {row.tableName}</Typography>
                                 </TableCell>
-                                {permissionActions.map((action) => (
+                                {permissionLabels.map((action) => (
                                   <TableCell key={action.key} align="center">
                                     <Checkbox
                                       checked={Boolean(rolePermissions[row.tableName]?.[action.key])}
                                       disabled={isAdminRole || saving}
-                                      onChange={() =>
-                                        handleTogglePermission(role, row.tableName, action.key)
-                                      }
-                                      inputProps={{
-                                        'aria-label': `${role}: ${action.label} ${row.label}`,
-                                      }}
+                                      onChange={() => handleTogglePermission(role, row.tableName, action.key)}
                                     />
                                   </TableCell>
                                 ))}
@@ -443,16 +354,10 @@ export function RolesPage() {
                           </TableBody>
                         </Table>
                       </TableContainer>
-
                       {!isAdminRole && (
                         <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-                          <Button
-                            variant="contained"
-                            startIcon={<SaveIcon />}
-                            onClick={() => void handleSavePermissions(role)}
-                            disabled={saving}
-                          >
-                            Зберегти права
+                          <Button variant="contained" startIcon={<SaveIcon />} onClick={() => void handleSavePermissions(role)} disabled={saving}>
+                            {t('roles.savePermissions')}
                           </Button>
                         </Stack>
                       )}
@@ -466,100 +371,57 @@ export function RolesPage() {
 
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Призначити роль користувачу
-            </Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>{t('roles.assignRole')}</Typography>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                label="Email користувача"
-                value={assignEmail}
-                onChange={(event) => setAssignEmail(event.target.value)}
-                fullWidth
-              />
-              <TextField
-                select
-                label="Роль"
-                value={assignRole}
-                onChange={(event) => setAssignRole(event.target.value)}
-                sx={{ minWidth: { xs: '100%', md: 220 } }}
-              >
+              <TextField label={t('roles.userEmail')} value={assignEmail} onChange={(event) => setAssignEmail(event.target.value)} fullWidth />
+              <TextField select label={t('roles.role')} value={assignRole} onChange={(event) => setAssignRole(event.target.value)} sx={{ minWidth: { xs: '100%', md: 220 } }}>
                 {roles.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {role}
-                  </MenuItem>
+                  <MenuItem key={role} value={role}>{role}</MenuItem>
                 ))}
               </TextField>
-              <Button variant="contained" onClick={() => void handleAssignRole()} disabled={saving}>
-                Призначити
-              </Button>
+              <Button variant="contained" onClick={() => void handleAssignRole()} disabled={saving}>{t('roles.assign')}</Button>
             </Stack>
           </CardContent>
         </Card>
 
         {!loading && (
           <Box>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1}
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              sx={{ mb: 2 }}
-            >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ mb: 2 }}>
               <Box sx={{ flex: 1 }}>
-                <Typography variant="h6">Призначені email</Typography>
-                <Typography color="text.secondary">
-                  Користувачі Supabase Auth, яким уже задано роль.
-                </Typography>
+                <Typography variant="h6">{t('roles.assignedEmails')}</Typography>
               </Box>
-              <Chip
-                color="primary"
-                variant="outlined"
-                label={`${assignedUsers.length} email`}
-              />
+              <Chip color="primary" variant="outlined" label={`${assignedUsers.length} email`} />
             </Stack>
-
-            {usersError && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                {usersError}
-              </Alert>
-            )}
-
-          <DataTable
-            columns={[
-              { key: 'email', label: 'Email', minWidth: 260 },
-              { key: 'role', label: 'Роль', minWidth: 160 },
-            ]}
-            rows={assignedUsers}
-            rowKey={(row) => row.id}
-            emptyMessage="Поки немає користувачів із призначеними ролями"
-          />
+            {usersError && <Alert severity="warning" sx={{ mb: 2 }}>{usersError}</Alert>}
+            <DataTable
+              columns={[
+                { key: 'email', label: 'Email', minWidth: 260 },
+                { key: 'role', label: t('roles.role'), minWidth: 160 },
+              ]}
+              rows={assignedUsers}
+              rowKey={(row) => row.id}
+              emptyMessage={t('roles.noUsers')}
+            />
           </Box>
         )}
       </Stack>
 
       <Dialog open={Boolean(renameTarget)} onClose={() => setRenameTarget(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Перейменувати роль</DialogTitle>
+        <DialogTitle>{t('roles.renameTitle')}</DialogTitle>
         <DialogContent>
-          <TextField
-            label="Нова назва"
-            value={renameValue}
-            onChange={(event) => setRenameValue(event.target.value)}
-            fullWidth
-            sx={{ mt: 1 }}
-          />
+          <TextField label={t('roles.newName')} value={renameValue} onChange={(event) => setRenameValue(event.target.value)} fullWidth sx={{ mt: 1 }} />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setRenameTarget(null)}>Скасувати</Button>
-          <Button variant="contained" onClick={() => void handleRenameRole()} disabled={saving}>
-            Зберегти
-          </Button>
+          <Button onClick={() => setRenameTarget(null)}>{t('confirm.cancel')}</Button>
+          <Button variant="contained" onClick={() => void handleRenameRole()} disabled={saving}>{t('confirm.confirm')}</Button>
         </DialogActions>
       </Dialog>
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Видалити роль?"
-        description={`Роль "${deleteTarget ?? ''}" буде видалена з реєстру.`}
-        confirmLabel="Видалити"
+        title={t('roles.deleteTitle')}
+        description={t('roles.deleteDescription', { role: deleteTarget ?? '' })}
+        confirmLabel={t('roles.delete')}
         confirmColor="error"
         loading={saving}
         onClose={() => setDeleteTarget(null)}

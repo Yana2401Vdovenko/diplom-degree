@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   clearArchiveRecords,
   deleteArchiveRecordsOlderThan,
@@ -15,6 +16,7 @@ import { useAppSettings } from '../context/AppSettingsContext';
 export function useArchive() {
   const { showSuccess, showError } = useNotification();
   const { archiveCleanupMode, archiveRetentionDays } = useAppSettings();
+  const { t } = useTranslation();
   const [records, setRecords] = useState<ArchiveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,18 +37,18 @@ export function useArchive() {
 
         if (expiredCount > 0) {
           await deleteArchiveRecordsOlderThan(archiveRetentionDays);
-          showSuccess(`Автоматично очищено ${expiredCount} записів архіву.`);
+          showSuccess(t('message.archiveAutoCleared', { count: expiredCount }));
           data = await fetchArchiveRecords();
         }
       }
 
       setRecords(data);
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося завантажити архів.'));
+      showError(getSupabaseErrorMessage(error, t('error.loadArchive')));
     } finally {
       setLoading(false);
     }
-  }, [archiveCleanupMode, archiveRetentionDays, showError, showSuccess]);
+  }, [archiveCleanupMode, archiveRetentionDays, showError, showSuccess, t]);
 
   useEffect(() => {
     void loadRecords();
@@ -58,17 +60,17 @@ export function useArchive() {
 
       try {
         await restoreArchiveRecord(record);
-        showSuccess('Запис успішно відновлено.');
+        showSuccess(t('message.recordRestored'));
         await loadRecords();
         return true;
       } catch (error) {
-        showError(getSupabaseErrorMessage(error, 'Не вдалося відновити запис.'));
+        showError(getSupabaseErrorMessage(error, t('error.restoreRecord')));
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [loadRecords, showError, showSuccess],
+    [loadRecords, showError, showSuccess, t],
   );
 
   const deletePermanently = useCallback(
@@ -77,17 +79,17 @@ export function useArchive() {
 
       try {
         await deleteArchiveRecordPermanently(id);
-        showSuccess('Запис остаточно видалено.');
+        showSuccess(t('message.recordDeleted'));
         await loadRecords();
         return true;
       } catch (error) {
-        showError(getSupabaseErrorMessage(error, 'Не вдалося видалити запис.'));
+        showError(getSupabaseErrorMessage(error, t('error.deleteRecord')));
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [loadRecords, showError, showSuccess],
+    [loadRecords, showError, showSuccess, t],
   );
 
   const deleteSelectedPermanently = useCallback(
@@ -96,17 +98,17 @@ export function useArchive() {
 
       try {
         await deleteArchiveRecordsPermanently(ids);
-        showSuccess(`Видалено записів: ${ids.length}.`);
+        showSuccess(t('message.recordsDeleted', { count: ids.length }));
         await loadRecords();
         return true;
       } catch (error) {
-        showError(getSupabaseErrorMessage(error, 'Не вдалося видалити обрані записи.'));
+        showError(getSupabaseErrorMessage(error, t('error.deleteSelected')));
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [loadRecords, showError, showSuccess],
+    [loadRecords, showError, showSuccess, t],
   );
 
   const clearArchive = useCallback(async () => {
@@ -114,16 +116,16 @@ export function useArchive() {
 
     try {
       await clearArchiveRecords();
-      showSuccess('Архів повністю очищено.');
+      showSuccess(t('message.archiveCleared'));
       await loadRecords();
       return true;
     } catch (error) {
-      showError(getSupabaseErrorMessage(error, 'Не вдалося очистити архів.'));
+      showError(getSupabaseErrorMessage(error, t('error.clearArchive')));
       return false;
     } finally {
       setSaving(false);
     }
-  }, [loadRecords, showError, showSuccess]);
+  }, [loadRecords, showError, showSuccess, t]);
 
   const deleteExpiredRecords = useCallback(
     async (days: number) => {
@@ -131,24 +133,24 @@ export function useArchive() {
 
       try {
         await deleteArchiveRecordsOlderThan(days);
-        showSuccess(`Архів очищено від записів старших за ${days} дн.`);
+        showSuccess(t('message.archiveClearedOlder', { days }));
         await loadRecords();
         return true;
       } catch (error) {
-        showError(getSupabaseErrorMessage(error, 'Не вдалося очистити старі записи архіву.'));
+        showError(getSupabaseErrorMessage(error, t('error.clearExpired')));
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [loadRecords, showError, showSuccess],
+    [loadRecords, showError, showSuccess, t],
   );
 
   const filteredRecords =
     tableFilter === 'all' ? records : records.filter((record) => record.Таблиця === tableFilter);
 
   const tableOptions = [
-    { value: 'all', label: 'Усі таблиці' },
+    { value: 'all', label: t('archive.allTables') },
     ...Array.from(new Set(records.map((record) => record.Таблиця))).map((table) => ({
       value: table,
       label: table,

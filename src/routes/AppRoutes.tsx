@@ -1,39 +1,49 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { AppLayout } from '../layouts/AppLayout';
-import { ArchivePage } from '../pages/ArchivePage';
-import { DashboardPage } from '../pages/DashboardPage';
-import { EducationLevelsPage } from '../pages/directories/EducationLevelsPage';
-import { LoginPage } from '../pages/LoginPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
-import { PositionsPage } from '../pages/directories/PositionsPage';
-import { RolesPage } from '../pages/RolesPage';
-import { SettingsPage } from '../pages/SettingsPage';
-import { StudyFormsPage } from '../pages/directories/StudyFormsPage';
-import { TeacherStatusesPage } from '../pages/directories/TeacherStatusesPage';
-import { TeacherTypesPage } from '../pages/directories/TeacherTypesPage';
-import { WorkloadDirectoryPage } from '../pages/directories/WorkloadDirectoryPage';
+import { LoadingOverlay } from '../components/LoadingOverlay';
+
+const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const DashboardPage = lazy(() => import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const DirectoryPage = lazy(() => import('../pages/DirectoryPage').then((m) => ({ default: m.DirectoryPage })));
+const ArchivePage = lazy(() => import('../pages/ArchivePage').then((m) => ({ default: m.ArchivePage })));
+const RolesPage = lazy(() => import('../pages/RolesPage').then((m) => ({ default: m.RolesPage })));
+const SchemaEditorPage = lazy(() => import('../pages/SchemaEditorPage').then((m) => ({ default: m.SchemaEditorPage })));
+const SettingsPage = lazy(() => import('../pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+
+const directoryRoutes = [
+  '/teacher-types',
+  '/positions',
+  '/teacher-statuses',
+  '/workload',
+  '/study-forms',
+  '/education-levels',
+  '/faculties',
+  '/departments',
+];
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/teacher-types" element={<TeacherTypesPage />} />
-          <Route path="/positions" element={<PositionsPage />} />
-          <Route path="/teacher-statuses" element={<TeacherStatusesPage />} />
-          <Route path="/workload" element={<WorkloadDirectoryPage />} />
-          <Route path="/study-forms" element={<StudyFormsPage />} />
-          <Route path="/education-levels" element={<EducationLevelsPage />} />
-          <Route path="/archive" element={<ArchivePage />} />
-          <Route path="/roles" element={<RolesPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+    <Suspense fallback={<LoadingOverlay />}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            {directoryRoutes.map((path) => (
+              <Route key={path} path={path} element={<DirectoryPage />} />
+            ))}
+            <Route path="/archive" element={<ArchivePage />} />
+            <Route path="/roles" element={<RolesPage />} />
+            <Route path="/schema" element={<SchemaEditorPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
         </Route>
-      </Route>
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
   );
 }
