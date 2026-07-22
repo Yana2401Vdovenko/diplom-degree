@@ -122,7 +122,41 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_all_tables: {
+        Args: Record<string, never>;
+        Returns: { table_name: string }[];
+      };
+      get_table_columns: {
+        Args: { target_table: string };
+        Returns: {
+          column_name: string;
+          data_type: string;
+          is_nullable: string;
+          column_default: string | null;
+          character_maximum_length: number | null;
+          udt_name: string;
+        }[];
+      };
+      get_table_constraints: {
+        Args: { target_table: string };
+        Returns: {
+          constraint_name: string;
+          constraint_type: string;
+          column_name: string;
+          foreign_table_name: string | null;
+          foreign_column_name: string | null;
+        }[];
+      };
+      get_table_indexes: {
+        Args: { target_table: string };
+        Returns: {
+          index_name: string;
+          column_names: string;
+          is_unique: boolean;
+        }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

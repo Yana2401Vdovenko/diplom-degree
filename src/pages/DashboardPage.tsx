@@ -10,7 +10,6 @@ import {
   Card,
   CardContent,
   Chip,
-  Grid,
   LinearProgress,
   List,
   ListItem,
@@ -95,58 +94,56 @@ export function DashboardPage() {
       {loading ? (
         <LoadingOverlay />
       ) : (
-        <Grid container spacing={2.5}>
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5}>
-                  <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-                      <AutoAwesomeIcon color="primary" />
-                      <Typography variant="h3">{t('dashboard.aiAnalytics')}</Typography>
-                    </Stack>
-                    <Stack spacing={1}>
-                      {aiInsights.map((insight) => (
-                        <Alert key={insight} severity="info">
-                          {insight}
-                        </Alert>
-                      ))}
-                    </Stack>
-                  </Box>
+        <Stack spacing={2.5}>
+          <Card>
+            <CardContent>
+              <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5}>
+                <Box sx={{ flex: 1 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+                    <AutoAwesomeIcon color="primary" />
+                    <Typography variant="h3">{t('dashboard.aiAnalytics')}</Typography>
+                  </Stack>
+                  <Stack spacing={1}>
+                    {aiInsights.map((insight) => (
+                      <Alert key={insight} severity="info">
+                        {insight}
+                      </Alert>
+                    ))}
+                  </Stack>
+                </Box>
 
-                  <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-                      <SpeedIcon color="primary" />
-                      <Typography variant="h3">{t('dashboard.serverLoad')}</Typography>
-                    </Stack>
-                    <Stack spacing={1.5}>
-                      <Stack direction="row" justifyContent="space-between">
-                        <Typography color="text.secondary">{t('dashboard.currentState')}</Typography>
-                        <Chip
-                          color={serverLoad >= 75 ? 'error' : serverLoad >= 45 ? 'warning' : 'success'}
-                          label={getServerLoadLabel(t, serverLoad)}
-                        />
-                      </Stack>
-                      <LinearProgress
-                        variant="determinate"
-                        value={serverLoad}
+                <Box sx={{ flex: 1 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+                    <SpeedIcon color="primary" />
+                    <Typography variant="h3">{t('dashboard.serverLoad')}</Typography>
+                  </Stack>
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography color="text.secondary">{t('dashboard.currentState')}</Typography>
+                      <Chip
                         color={serverLoad >= 75 ? 'error' : serverLoad >= 45 ? 'warning' : 'success'}
+                        label={getServerLoadLabel(t, serverLoad)}
                       />
-                      <Typography variant="body2" color="text.secondary">
-                        {t('dashboard.dbResponseTime')}: {stats?.databaseResponseMs ?? 0} {t('dashboard.ms')}. {t('dashboard.activeRecordsLabel')}:
-                        {' '}
-                        {stats?.totalDirectoryRecords ?? 0}. {t('dashboard.archiveLabel')}: {stats?.archiveCount ?? 0}.
-                      </Typography>
                     </Stack>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
+                    <LinearProgress
+                      variant="determinate"
+                      value={serverLoad}
+                      color={serverLoad >= 75 ? 'error' : serverLoad >= 45 ? 'warning' : 'success'}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {t('dashboard.dbResponseTime')}: {stats?.databaseResponseMs ?? 0} {t('dashboard.ms')}. {t('dashboard.activeRecordsLabel')}:
+                      {' '}
+                      {stats?.totalDirectoryRecords ?? 0}. {t('dashboard.archiveLabel')}: {stats?.archiveCount ?? 0}.
+                    </Typography>
+                  </Stack>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
 
-          {stats?.directories.map((item) => (
-            <Grid item xs={12} sm={6} lg={4} key={item.key}>
-              <Card sx={{ height: '100%' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5 }}>
+            {stats?.directories.map((item) => (
+              <Card key={item.key} sx={{ flex: '1 1 300px', maxWidth: '100%' }}>
                 <CardContent>
                   <Typography color="text.secondary" fontWeight={700} gutterBottom>
                     {item.title}
@@ -167,11 +164,9 @@ export function DashboardPage() {
                   </Button>
                 </CardContent>
               </Card>
-            </Grid>
-          ))}
+            ))}
 
-          <Grid item xs={12} sm={6} lg={4}>
-            <Card sx={{ height: '100%' }}>
+            <Card sx={{ flex: '1 1 300px', maxWidth: '100%' }}>
               <CardContent>
                 <Typography color="text.secondary" fontWeight={700} gutterBottom>
                   {t('dashboard.archiveLabel')}
@@ -179,7 +174,7 @@ export function DashboardPage() {
                 <Typography variant="h2" sx={{ mb: 1 }}>
                   {stats?.archiveCount ?? 0}
                 </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   {t('dashboard.archiveCount')}
                 </Typography>
                 <Button
@@ -192,31 +187,29 @@ export function DashboardPage() {
                 </Button>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
 
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Stack spacing={1}>
-                  <Typography variant="h3">{t('dashboard.quickActions')}</Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ pt: 1 }}>
-                    <Button component={RouterLink} to="/roles" variant="outlined">
-                      {t('nav.roles')}
-                    </Button>
-                    <Button component={RouterLink} to="/archive" variant="outlined">
-                      {t('nav.archive')}
-                    </Button>
-                    <Button component={RouterLink} to="/settings" variant="outlined">
-                      {t('nav.settings')}
-                    </Button>
-                  </Stack>
+          <Card>
+            <CardContent>
+              <Stack spacing={1}>
+                <Typography variant="h3">{t('dashboard.quickActions')}</Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ pt: 1 }}>
+                  <Button component={RouterLink} to="/roles" variant="outlined">
+                    {t('nav.roles')}
+                  </Button>
+                  <Button component={RouterLink} to="/archive" variant="outlined">
+                    {t('nav.archive')}
+                  </Button>
+                  <Button component={RouterLink} to="/settings" variant="outlined">
+                    {t('nav.settings')}
+                  </Button>
                 </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
+              </Stack>
+            </CardContent>
+          </Card>
 
-          <Grid item xs={12} lg={6}>
-            <Card sx={{ height: '100%' }}>
+          <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5}>
+            <Card sx={{ flex: 1 }}>
               <CardContent>
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
                   <DeleteSweepIcon color="primary" />
@@ -238,10 +231,8 @@ export function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          </Grid>
 
-          <Grid item xs={12} lg={6}>
-            <Card sx={{ height: '100%' }}>
+            <Card sx={{ flex: 1 }}>
               <CardContent>
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
                   <ManageSearchIcon color="primary" />
@@ -265,8 +256,8 @@ export function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Stack>
+        </Stack>
       )}
     </>
   );

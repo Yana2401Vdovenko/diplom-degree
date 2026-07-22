@@ -24,31 +24,26 @@ export interface IndexInfo {
   is_unique: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseRpc = <T>(fn: string, params?: Record<string, any>) => Promise<{ data: T | null; error: any }>;
-
-const rpc = supabase.rpc as unknown as SupabaseRpc;
-
 export async function fetchAllTables(): Promise<string[]> {
-  const { data, error } = await rpc<Array<{ table_name: string }>>('get_all_tables');
+  const { data, error } = await supabase.rpc('get_all_tables');
   if (error) throw error;
   return (data ?? []).map((r) => r.table_name);
 }
 
 export async function fetchTableColumns(tableName: string): Promise<ColumnInfo[]> {
-  const { data, error } = await rpc<ColumnInfo[]>('get_table_columns', { target_table: tableName });
+  const { data, error } = await supabase.rpc('get_table_columns', { target_table: tableName });
   if (error) throw error;
   return (data ?? []) as ColumnInfo[];
 }
 
 export async function fetchTableConstraints(tableName: string): Promise<ConstraintInfo[]> {
-  const { data, error } = await rpc<ConstraintInfo[]>('get_table_constraints', { target_table: tableName });
+  const { data, error } = await supabase.rpc('get_table_constraints', { target_table: tableName });
   if (error) throw error;
   return (data ?? []) as ConstraintInfo[];
 }
 
 export async function fetchTableIndexes(tableName: string): Promise<IndexInfo[]> {
-  const { data, error } = await rpc<IndexInfo[]>('get_table_indexes', { target_table: tableName });
+  const { data, error } = await supabase.rpc('get_table_indexes', { target_table: tableName });
   if (error) throw error;
   return (data ?? []) as IndexInfo[];
 }
